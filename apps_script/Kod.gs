@@ -19,7 +19,8 @@
  * sonra "kurulum" işlevini bir kez çalıştırmak ve web uygulaması olarak
  * dağıtmak (ayrıntılar KURULUM.md dosyasında).
  */
-const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";
+const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";   // ← şifre YALNIZCA bu satıra yazılır
+const SIFRE_AYARLI = EKIP_SIFRESI !== ["BURAYA", "BIR", "SIFRE", "YAZIN"].join("-") && EKIP_SIFRESI.length > 0;
 
 const KLASOR_ADI = "T-Route Fotoğraflar";
 const HAM = "_kayitlar";
@@ -41,7 +42,7 @@ function doGet() {
 function doPost(e) {
   let req;
   try { req = JSON.parse(e.postData.contents); } catch (x) { return json_({ ok: false, error: "Geçersiz istek" }); }
-  if (EKIP_SIFRESI === "BURAYA-BIR-SIFRE-YAZIN") return json_({ ok: false, error: "Apps Script'te ekip şifresi henüz belirlenmemiş" });
+  if (!SIFRE_AYARLI) return json_({ ok: false, error: "Apps Script'te ekip şifresi henüz belirlenmemiş" });
   if (String(req.key || "") !== EKIP_SIFRESI) return json_({ ok: false, error: "Ekip şifresi yanlış" });
   try {
     switch (req.op) {
@@ -353,7 +354,7 @@ function kurulum() {
   tablolariGuncelle();
   const def = ss_().getSheetByName("Sayfa1") || ss_().getSheetByName("Sheet1");
   if (def && def.getLastRow() === 0 && ss_().getSheets().length > 1) ss_().deleteSheet(def);
-  if (EKIP_SIFRESI === "BURAYA-BIR-SIFRE-YAZIN") {
+  if (!SIFRE_AYARLI) {
     throw new Error("Kurulum tamamlandı, ancak EKIP_SIFRESI hâlâ değiştirilmedi. Kodun başındaki şifreyi değiştirip kaydedin.");
   }
 }
