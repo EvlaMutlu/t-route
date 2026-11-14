@@ -17,7 +17,7 @@
 :root{
   --ink:#2b251c; --ink2:#5e5446; --paper:#f6f1e7; --paper2:#ece4d4; --line:#d8ccb6;
   --accent:#a8492a; --pine:#2f5d50; --ok:#2b8a3e; --warn:#e67700; --bad:#c92a2a;
-  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+  --safe-t:var(--safe-area-inset-top, env(safe-area-inset-top,0px)); --safe-b:var(--safe-area-inset-bottom, env(safe-area-inset-bottom,0px));
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--paper);font-size:16px}
@@ -225,6 +225,12 @@ function hav(a,b){ const R=6371000, t=Math.PI/180; const dLat=(b.lat-a.lat)*t, d
 function toast(msg, ms=2600){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); t.style.opacity=1; clearTimeout(toast._t); toast._t=setTimeout(()=>{t.style.opacity=0; setTimeout(()=>t.classList.add("hidden"),300)}, ms); }
 const debounce=(fn,ms)=>{let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
 
+/* ---------------- Android uygulaması (Capacitor) ---------------- */
+const APP_URL = "https://evlamutlu.github.io/t-route/";
+const NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const plug = n => { try{ return NATIVE ? window.Capacitor.registerPlugin(n) : null; }catch(e){ return null; } };
+const BGGeo = plug("BackgroundGeolocation"), CapFS = plug("Filesystem"), CapShare = plug("Share"), CapApp = plug("App"), CapNotif = plug("LocalNotifications");
+
 /* ---------------- modal ---------------- */
 function ask({title, html="", input=null, buttons=[["Tamam","p",true]]}){
   return new Promise(res=>{
@@ -399,12 +405,32 @@ async function preloadLocalBlobs(){
 }
 
 /* ---------------- harita ---------------- */
+// Harita karoları: önce cihazdaki önbellek, yoksa internet (görülen karolar da saklanır)
+const TileCache = L.TileLayer.extend({
+  createTile(coords, done){
+    const img=document.createElement("img"); img.alt=""; img.setAttribute("role","presentation");
+    const url=this.getTileUrl(coords);
+    const plain=()=>{ img.onload=()=>done(null,img); img.onerror=e=>done(e,img); img.src=url; };
+    (async()=>{
+      try{
+        const c = ("caches" in window) ? await caches.open("tsd-tiles-v1") : null;
+        let r = c ? await c.match(url) : null;
+        if(!r){ if(!c) return plain(); r = await fetch(url,{mode:"cors"}); if(r.ok) c.put(url, r.clone()).catch(()=>{}); }
+        if(!r.ok) throw new Error("karo yok");
+        const u=URL.createObjectURL(await r.blob());
+        img.onload=()=>{ URL.revokeObjectURL(u); done(null,img); }; img.onerror=e=>{ URL.revokeObjectURL(u); done(e,img); }; img.src=u;
+      }catch(e){ plain(); }
+    })();
+    return img;
+  }
+});
+const cachedTiles=(url,opt)=>new TileCache(url,Object.assign({},opt,{crossOrigin:false}));
 let map, layerTracks, layerFeats, layerEdit, layerMates, meMarker, meCircle;
 function initMap(){
   map = L.map("map", {zoomControl:false, attributionControl:true, tap:true}).setView(ls.get("mapView2",{c:CONFIG.CENTER}).c, ls.get("mapView2",{z:CONFIG.ZOOM}).z||CONFIG.ZOOM);
-  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxNativeZoom:18, maxZoom:21, crossOrigin:true, attribution:"Uydu: Esri, Maxar, Earthstar Geographics"});
-  const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {subdomains:"abc", maxNativeZoom:17, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları, SRTM | OpenTopoMap (CC-BY-SA)"});
-  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxNativeZoom:19, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları"});
+  const sat = cachedTiles("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxNativeZoom:18, maxZoom:21, crossOrigin:true, attribution:"Uydu: Esri, Maxar, Earthstar Geographics"});
+  const topo = cachedTiles("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {subdomains:"abc", maxNativeZoom:17, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları, SRTM | OpenTopoMap (CC-BY-SA)"});
+  const osm = cachedTiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxNativeZoom:19, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları"});
   const base = {"Uydu":sat, "Topoğrafik":topo, "Sokak":osm};
   (base[ls.get("base","Uydu")]||sat).addTo(map);
   L.control.layers(base, null, {position:"topright"}).addTo(map);
@@ -477,14 +503,28 @@ function startWatch(){
   if(watchId!=null) return;
   watchId=navigator.geolocation.watchPosition(onPos, e=>{ gpsErr=e.message||"Konum alınamadı"; updateRecBanner(); if(e.code===1) toast("Konum izni verilmedi. Tarayıcı ayarlarından izin verin.",5000); }, {enableHighAccuracy:true, maximumAge:0, timeout:30000});
 }
-function onPos(p){
+let bgWatchId=null;
+async function startBgWatch(){
+  if(!BGGeo || bgWatchId) return;
+  try{ if(CapNotif) await CapNotif.requestPermissions(); }catch(e){}
+  try{
+    bgWatchId = await BGGeo.addWatcher({backgroundTitle:"T-Route rota kaydediyor", backgroundMessage:"Ekran kapalıyken de konum kaydediliyor.", requestPermissions:true, stale:false, distanceFilter:0}, (loc, err)=>{
+      if(err){ gpsErr=err.message||"Konum alınamadı"; updateRecBanner();
+        if(err.code==="NOT_AUTHORIZED") ask({title:"Konum izni gerekli", html:'<p class="muted">Rota kaydı için konum iznini “Uygulamayı kullanırken” olarak verin.</p>', buttons:[["Vazgeç","",false],["Ayarları aç","p",true]]}).then(v=>{ if(v) BGGeo.openSettings(); });
+        return; }
+      if(loc) onPos({coords:{latitude:loc.latitude, longitude:loc.longitude, accuracy:loc.accuracy, altitude:loc.altitude}, timestamp:loc.time||Date.now()}, true);
+    });
+  }catch(e){ bgWatchId=null; toast("Arka plan konumu başlatılamadı: "+(e.message||e), 5000); }
+}
+async function stopBgWatch(){ if(BGGeo && bgWatchId){ const id=bgWatchId; bgWatchId=null; try{ await BGGeo.removeWatcher({id}); }catch(e){} } }
+function onPos(p, fromBg){
   gpsErr=null;
   const c=p.coords; lastFix={lat:c.latitude, lng:c.longitude, acc:c.accuracy, alt:c.altitude, t:p.timestamp||Date.now()};
   const ll=[c.latitude,c.longitude];
   if(!meMarker){ meCircle=L.circle(ll,{radius:c.accuracy, color:"#1c7ed6", weight:1, fillOpacity:.12, interactive:false}).addTo(map); meMarker=L.marker(ll,{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[18,18]}), interactive:false, zIndexOffset:1000}).addTo(map); }
   else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(c.accuracy); }
   if(SET.follow && !editTrack && !pickCb) map.panTo(ll, {animate:true});
-  if(recTrack) recordFix(lastFix);
+  if(recTrack && (!bgWatchId || fromBg)) recordFix(lastFix);
   updateRecBanner();
 }
 async function recordFix(f){
@@ -509,11 +549,13 @@ async function startRec(continueId){
   recTrack=t.id; ls.set("recTrack",recTrack); SET.follow=true; $("#followBtn").classList.add("on");
   requestWake(); updateRecBanner();
   if(lastFix && Date.now()-lastFix.t<15000) recordFix(lastFix);
-  toast("Rota kaydı başladı. Ekranı açık tutun.");
+  if(NATIVE){ await startBgWatch(); toast("Rota kaydı başladı. Ekranı kilitleyebilirsiniz."); }
+  else toast("Rota kaydı başladı. Ekranı açık tutun.");
 }
 async function stopRec(silent){
   const t=R.get(recTrack);
   recTrack=null; ls.set("recTrack",null); lastRecPt=null;
+  await stopBgWatch();
   try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock=null;
   if(t && !t.deleted){ await saveRec(patch(t,{ended_at:nowISO()})); if(!silent){ const s=trackStats(trackPoints(t.id)); toast(`Kayıt bitti: ${fmtLen(s.len)}, ${s.n} nokta`); } }
   updateRecBanner(); sync();
@@ -868,14 +910,21 @@ async function openMenu(){
   });
 }
 async function shareSetup(){
-  const c=cfg(); const link=location.origin+location.pathname+"#kurulum-"+btoa(unescape(encodeURIComponent(JSON.stringify({u:c.url,k:c.key})))).replace(/=+$/,"");
-  await ask({title:"Kurulum bağlantısı", html:`<p class="muted">Bu bağlantıyı ortağınıza gönderin. Açtığında Drive bağlantısı ve ekip şifresi kendiliğinden girilir. <b>İçinde şifre olduğu için bağlantıyı ekip dışına paylaşmayın.</b></p><textarea class="in" readonly id="shLink" style="min-height:90px;font-size:12px">${esc(link)}</textarea>`, buttons:[["Kopyala","p",true]]});
+  const c=cfg(); const link=(NATIVE? APP_URL : location.origin+location.pathname)+"#kurulum-"+btoa(unescape(encodeURIComponent(JSON.stringify({u:c.url,k:c.key})))).replace(/=+$/,"");
+  await ask({title:"Kurulum bağlantısı", html:`<p class="muted">Bu bağlantıyı ortağınıza gönderin. Android uygulamasında: bağlantıyı kopyalayıp ilk ekrandaki adres kutusuna yapıştırması yeterli. Tarayıcıda açtığında Drive bağlantısı ve ekip şifresi kendiliğinden girilir. <b>İçinde şifre olduğu için bağlantıyı ekip dışına paylaşmayın.</b></p><textarea class="in" readonly id="shLink" style="min-height:90px;font-size:12px">${esc(link)}</textarea>`, buttons:[["Kopyala","p",true]]});
+  if(NATIVE && CapShare){ try{ await CapShare.share({title:"T-Route kurulum bağlantısı", text:link}); }catch(e){} return; }
   try{ await navigator.clipboard.writeText(link); toast("Kopyalandı"); }catch(e){ const t=document.createElement("textarea"); t.value=link; document.body.appendChild(t); t.select(); try{document.execCommand("copy"); toast("Kopyalandı");}catch(_){} t.remove(); }
 }
 
 /* ---------------- dışa aktarma ---------------- */
 const slug=s=>String(s).toLocaleLowerCase("tr").replace(/ı/g,"i").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ş/g,"s").replace(/ö/g,"o").replace(/ç/g,"c").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"")||"dosya";
-function download(name, text, type){ const b=new Blob([text],{type}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u); a.remove();},2000); toast(name+" hazırlandı"); }
+async function download(name, text, type){
+  if(NATIVE && CapFS && CapShare){
+    try{ const w=await CapFS.writeFile({path:name, data:text, directory:"CACHE", encoding:"utf8"}); await CapShare.share({title:name, files:[w.uri], dialogTitle:"Dosyayı kaydet / gönder"}); }
+    catch(e){ if(!/cancel/i.test(e.message||"")) toast("Dosya paylaşılamadı: "+(e.message||e), 4000); }
+    return;
+  }
+  const b=new Blob([text],{type}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u); a.remove();},2000); toast(name+" hazırlandı"); }
 function featExtras(f){
   const entries=[...R.values()].filter(r=>r.kind==="entry"&&!r.deleted&&r.data.feature_id===f.id).sort((a,b)=>a.created_at<b.created_at?-1:1);
   const photos=[...R.values()].filter(r=>r.kind==="photo"&&!r.deleted&&r.data.feature_id===f.id);
@@ -929,7 +978,7 @@ function serverScreen(fromMenu){
   const c=cfg();
   screen(`<h3 style="margin-top:0">Google Drive bağlantısı</h3>
     <p class="muted">Kayıtlar Hülya Aybek’in Google Drive’ındaki “T-Route” e-tablosunda, fotoğraflar “T-Route” klasöründe toplanır. Kurulum kılavuzundaki adımlarla aldığınız bilgileri girin. Ortağınız size bir kurulum bağlantısı gönderdiyse onu açmanız yeterli.</p>
-    <label class="f">Web uygulaması adresi</label><textarea class="in" id="sUrl" style="min-height:70px;font-size:13px" autocapitalize="off" autocorrect="off" placeholder="https://script.google.com/macros/s/…/exec" ${CONFIG.SCRIPT_URL?"readonly":""}>${esc(c.url||"")}</textarea>
+    <label class="f">Web uygulaması adresi</label><textarea class="in" id="sUrl" style="min-height:70px;font-size:13px" autocapitalize="off" autocorrect="off" placeholder="https://script.google.com/macros/s/…/exec  (ya da ortağınızın gönderdiği kurulum bağlantısı)" ${CONFIG.SCRIPT_URL?"readonly":""}>${esc(c.url||"")}</textarea>
     <label class="f">Ekip şifresi</label><input class="in" id="sKey" value="${esc(c.key||"")}" autocapitalize="off" autocorrect="off" placeholder="Apps Script’te belirlediğiniz şifre">
     <div style="height:14px"></div>
     <button class="btn p w" id="sSave">Bağlan ve devam et</button>
@@ -937,7 +986,9 @@ function serverScreen(fromMenu){
     <button class="btn w" id="sLocal">${fromMenu?"Vazgeç":"Şimdilik yalnız bu cihazda dene"}</button>
     <p class="muted" id="sMsg"></p>`, ()=>{
     $("#sSave").onclick=async()=>{
-      const url=$("#sUrl").value.trim(); const key=$("#sKey").value.trim();
+      let url=$("#sUrl").value.trim(); let key=$("#sKey").value.trim();
+      const m=url.match(/#kurulum-([A-Za-z0-9+\/=_-]+)/);
+      if(m){ try{ const j=JSON.parse(decodeURIComponent(escape(atob(m[1])))); url=j.u||""; key=j.k||key; $("#sUrl").value=url; $("#sKey").value=key; }catch(e){ $("#sMsg").textContent="Kurulum bağlantısı okunamadı."; return; } }
       if(!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url)){ $("#sMsg").textContent="Adres https://script.google.com/macros/s/…/exec biçiminde olmalı."; return; }
       if(!key){ $("#sMsg").textContent="Ekip şifresini girin."; return; }
       $("#sMsg").textContent="Bağlantı deneniyor…";
@@ -982,7 +1033,7 @@ function startFlow(){ const c=cfg(); if(!(c.url && c.key) && !ls.get("localOnly"
 function enterApp(){
   hideScreen(); render(); fitStage(); startWatch(); sync();
   const t=recTrack && R.get(recTrack);
-  if(t && !t.deleted && !t.data.ended_at && t.created_by===ME){ toast("Önceki rota kaydı sürüyor"); requestWake(); }
+  if(t && !t.deleted && !t.data.ended_at && t.created_by===ME){ toast("Önceki rota kaydı sürüyor"); requestWake(); startBgWatch(); }
   else if(recTrack){ recTrack=null; ls.set("recTrack",null); }
   updateRecBanner();
 }
@@ -1016,7 +1067,17 @@ $("#followBtn").onclick=()=>{ SET.follow=!SET.follow; ls.set("settings",SET); $(
   initMap(); initServer();
   $("#followBtn").classList.toggle("on", SET.follow);
   STAGE=ls.get("stage",null); if(STAGE && !R.get(STAGE)) STAGE=null;
-  if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+  if(NATIVE && CapApp){ CapApp.addListener("backButton", ()=>{
+      if(!$("#viewer").classList.contains("hidden")) $("#viewer").classList.add("hidden");
+      else if(!$("#modal").classList.contains("hidden")) $("#modal").classList.add("hidden");
+      else if(!$("#sheet").classList.contains("hidden")) closeSheet();
+      else if(pickCb) endPick();
+      else if(editTrack) endEdit();
+      else CapApp.minimizeApp();
+    });
+    CapApp.addListener("resume", ()=>{ sync(); render(); });
+  }
+  if(!NATIVE && "serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
   if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
   startFlow();
 })();

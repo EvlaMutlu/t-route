@@ -1,0 +1,12 @@
+{
+  "appId": "io.github.evlamutlu.troute",
+  "appName": "T-Route",
+  "webDir": "www",
+  "android": {
+    "useLegacyBridge": true,
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SystemBars": { "insetsHandling": "css", "initialViewportFitValueHint": "cover" }
+  }
+}
