@@ -275,7 +275,58 @@ async function saveRecs(list){
 }
 const saveRec = r => saveRecs([r]);
 function patch(r, dataPatch){ return Object.assign({}, r, {data:Object.assign({}, r.data, dataPatch)}); }
-async function softDelete(list){ await saveRecs(list.map(r=>Object.assign({}, r, {deleted:true}))); }
+// Silme = geri dönüşüm kutusuna taşıma. Birlikte silinenler aynı "batch" ile işaretlenir ve birlikte geri yüklenir.
+async function softDelete(list){
+  if(!list.length) return;
+  const trash={batch:uuid(), at:nowISO(), by:ME, head:list[0].id};
+  await saveRecs(list.map(r=>Object.assign({}, r, {deleted:true, data:Object.assign({}, r.data, {trash})})));
+}
+function trashGroups(){
+  const g=new Map();
+  for(const r of R.values()){ const t=r.deleted && r.data && r.data.trash; if(!t) continue; if(!g.has(t.batch)) g.set(t.batch,{batch:t.batch, at:t.at, by:t.by, headId:t.head, recs:[]}); g.get(t.batch).recs.push(r); }
+  return [...g.values()].map(x=>Object.assign(x,{head:R.get(x.headId)||x.recs[0]})).sort((a,b)=>a.at<b.at?1:-1);
+}
+async function restoreGroup(batch){
+  const list=[...R.values()].filter(r=>r.deleted && r.data && r.data.trash && r.data.trash.batch===batch);
+  await saveRecs(list.map(r=>{ const d=Object.assign({}, r.data); delete d.trash; return Object.assign({}, r, {deleted:false, data:d}); }));
+  return list.length;
+}
+function trashLabel(g){
+  const h=g.head, d=h.data||{};
+  if(h.kind==="stage") return ["📁","Etap",d.name];
+  if(h.kind==="track") return ["〰️","Rota",d.name];
+  if(h.kind==="feature") return [(CAT[d.category]||CAT.diger).icon,"Nokta",d.title];
+  if(h.kind==="entry"){ const f=R.get(d.feature_id); return ["📝","Not",`“${String(d.text||"").slice(0,60)}”${f?" – "+f.data.title:""}`]; }
+  if(h.kind==="photo"){ const f=R.get(d.feature_id); return ["📷","Fotoğraf",f?f.data.title:""]; }
+  return ["•",h.kind,""];
+}
+function openTrash(){
+  const gs=trashGroups();
+  openSheet("Geri dönüşüm kutusu", `<p class="muted" style="margin-top:0">Silinen kayıtlar burada saklanır ve birlikte silindikleri kayıtlarla beraber geri yüklenebilir. Fotoğraf dosyaları Drive’dan silinmez.</p>`+
+    (gs.map(g=>{ const [ic,tur,ad]=trashLabel(g); const st=g.head.kind!=="stage"? R.get(g.head.stage_id):null;
+      return `<div class="li"><span style="font-size:22px">${ic}</span><span class="m"><b>${esc(tur)}: ${esc(ad||"—")}</b><span class="by"><i style="background:${userOf(g.by).color}"></i>${esc(g.by)} sildi · ${fmtDT(g.at)}</span><div class="muted">${g.recs.length} kayıt${st?" · "+esc(st.data.name)+(st.deleted?" (etap da silinmiş)":""):""}</div></span><button class="btn s p" data-r="${g.batch}">Geri yükle</button></div>`; }).join("") || '<p class="muted">Geri dönüşüm kutusu boş.</p>'), b=>{
+    b.querySelectorAll("[data-r]").forEach(x=>x.onclick=async()=>{
+      const g=gs.find(y=>y.batch===x.dataset.r); const st=g.head.kind!=="stage"? R.get(g.head.stage_id):null;
+      if(st && st.deleted){ toast("Önce bu kaydın etabını (“"+st.data.name+"”) geri yükleyin.",4000); return; }
+      const n=await restoreGroup(g.batch); toast(`${n} kayıt geri yüklendi`);
+      if(g.head.kind==="stage" && !STAGE){ setStage(g.head.id); }
+      openTrash();
+    });
+  });
+}
+async function deleteStage(id){
+  const st=R.get(id); if(!st) return;
+  const list=[...R.values()].filter(r=>!r.deleted && r.stage_id===id && r.id!==id);
+  const n=k=>list.filter(r=>r.kind===k).length;
+  const ok=await ask({title:"Emin misiniz?", html:`<p style="font-size:15px">“<b>${esc(st.data.name)}</b>” etabı silinecek:</p><p class="muted" style="font-size:15px">${n("track")} rota (${n("point")} rota noktası), ${n("feature")} nokta, ${n("entry")} not, ${n("photo")} fotoğraf.</p><p class="muted">Silme iki kullanıcıya da yansır. Kayıtlar <b>Menü → Geri dönüşüm kutusu</b>’ndan geri yüklenebilir; fotoğraf dosyaları Drive’da kalır.</p>`, buttons:[["Vazgeç","",false],["Evet, etabı sil","d",true]]});
+  if(!ok) return;
+  if(recTrack && R.get(recTrack) && R.get(recTrack).stage_id===id) await stopRec(true);
+  if(editTrack && R.get(editTrack) && R.get(editTrack).stage_id===id) endEdit();
+  await softDelete([st, ...list]);
+  toast("Etap silindi. Geri dönüşüm kutusundan geri alınabilir.", 4000);
+  if(STAGE===id){ STAGE=null; ls.set("stage",null); closeSheet(); stageScreen(); }
+  else pickStageToDelete();
+}
 
 /* ---------------- senkronizasyon (Google Drive / Apps Script) ---------------- */
 let syncing=false, syncAgain=false, syncErr=null, lastSync=null;
@@ -846,6 +897,12 @@ function stageListHtml(inSheet){
 function bindStageList(root, after){
   root.querySelectorAll("[data-s]").forEach(x=>x.onclick=()=>{ setStage(x.dataset.s); if(after) after(); else { closeSheet(); toast("Aktif etap: "+R.get(STAGE).data.name); } });
 }
+function pickStageToDelete(){
+  const st=recs("stage").sort((a,b)=>(b.data.no||0)-(a.data.no||0));
+  openSheet("Hangi etap silinsin?", st.map(s=>`<button class="li" data-ds="${s.id}"><span style="font-size:20px">📁</span><span class="m"><b>${esc(s.data.name)}</b>${byTag(s.created_by,s.created_at)}<div class="muted">${recs("track",s.id).length} rota · ${recs("feature",s.id).length} nokta${s.id===STAGE?" · aktif etap":""}</div></span><span style="color:var(--bad);font-weight:600">Sil</span></button>`).join("") || '<p class="muted">Etap yok.</p>', b=>{
+    b.querySelectorAll("[data-ds]").forEach(x=>x.onclick=()=>deleteStage(x.dataset.ds));
+  });
+}
 function setStage(id){ STAGE=id; ls.set("stage",id); render(); fitStage(); }
 function fitStage(){
   const ids=new Set(recs("track",STAGE).map(t=>t.id)); const ll=[];
@@ -881,7 +938,9 @@ async function openMenu(){
     <div class="card"><b>Senkronizasyon</b><div class="muted" style="margin-top:4px">${sb? (navigator.onLine?"Google Drive’a bağlı":"Çevrimdışı – bağlantı gelince otomatik gönderilir") : "Yerel mod: veriler yalnız bu cihazda. Drive bağlantısını girin."}<br>Bekleyen: ${n} kayıt, ${b} fotoğraf${lastSync?`<br>Son eşitleme: ${new Date(lastSync).toLocaleTimeString("tr-TR")}`:""}${syncErr?`<br><span style="color:var(--bad)">Hata: ${esc(syncErr)}</span>`:""}${sb?`<br>Diğer telefondaki girişler ~20 sn içinde gelir.`:""}</div>
       <div class="row" style="margin-top:8px">${sb?'<button class="btn s p" id="mSync">Şimdi eşitle</button>':""}<button class="btn s" id="mSrv">Drive bağlantısı</button>${c.url&&c.key?'<button class="btn s" id="mShare">Ortağa kurulum bağlantısı</button>':""}</div></div>
     <h3>Etap</h3>
-    <div class="row"><button class="btn s" id="mStage">Etap değiştir / yeni etap</button><button class="btn s" id="mRenS">Etabı yeniden adlandır</button></div>
+    <div class="row"><button class="btn s" id="mStage">Etap değiştir / yeni etap</button><button class="btn s" id="mRenS">Etabı yeniden adlandır</button><button class="btn s d" id="mDelS">Etabı sil…</button></div>
+    <h3>Geri dönüşüm kutusu</h3>
+    <button class="btn s" id="mTrash">🗑 Silinenleri gör / geri yükle (${trashGroups().length})</button>
     <h3>Dışa aktar</h3>
     <div class="row"><button class="btn s" id="mGeo1">GeoJSON (aktif etap)</button><button class="btn s" id="mGeo2">GeoJSON (tümü)</button><button class="btn s" id="mGpx1">GPX (aktif etap)</button><button class="btn s" id="mGpx2">GPX (tümü)</button><button class="btn s" id="mCsv">Noktalar CSV</button></div>
     <h3>Çevrimdışı harita</h3>
@@ -896,6 +955,8 @@ async function openMenu(){
     $("#mSrv").onclick=()=>{ closeSheet(); serverScreen(true); };
     const sh=$("#mShare"); if(sh) sh.onclick=shareSetup;
     $("#mStage").onclick=()=>{ closeSheet(); stageScreen(); };
+    $("#mDelS").onclick=()=>pickStageToDelete();
+    $("#mTrash").onclick=openTrash;
     $("#mRenS").onclick=async()=>{ const st=R.get(STAGE); if(!st) return; const v=await ask({title:"Etap adı", input:{value:st.data.name}, buttons:[["Vazgeç","",false],["Kaydet","p",true]]}); if(v){ await saveRec(patch(st,{name:v})); openMenu(); } };
     const stTr=()=>recs("track").filter(t=>t.stage_id===STAGE), stFe=()=>recs("feature").filter(f=>f.stage_id===STAGE);
     const stName=slug(R.get(STAGE)?.data.name||"etap");

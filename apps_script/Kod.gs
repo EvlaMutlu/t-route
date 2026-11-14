@@ -355,8 +355,26 @@ function tablolariGuncelle() {
   const fs = ss_().getSheetByName("Fotoğraflar");
   if (fs.getLastRow() > 1) fs.setRowHeights(2, fs.getLastRow() - 1, 90);
 
+  // Geri dönüşüm kutusu (uygulamadan geri yüklenebilir)
+  const groups = {};
+  all.forEach(function (r) {
+    const t = r.deleted && r.data && r.data.trash; if (!t) return;
+    const g = groups[t.batch] = groups[t.batch] || { t: t, n: 0, head: null };
+    g.n++; if (r.id === t.head) g.head = r;
+  });
+  const allById = {}; all.forEach(function (r) { allById[r.id] = r; });
+  const kindTR = { stage: "Etap", track: "Rota", feature: "Nokta", entry: "Not", photo: "Fotoğraf", point: "Rota noktası" };
+  writeSheet_("Geri Dönüşüm", ["Silinme zamanı", "Silen", "Tür", "Ad", "Etap", "Kayıt sayısı"],
+    Object.keys(groups).map(function (k) { return groups[k]; }).filter(function (g) { return g.head; })
+      .sort(function (a, b) { return a.t.at < b.t.at ? 1 : -1; }).map(function (g) {
+        const h = g.head, d = h.data || {};
+        const ad = h.kind === "stage" ? d.name : h.kind === "track" ? d.name : h.kind === "feature" ? d.title : h.kind === "entry" ? d.text : (allById[d.feature_id] ? allById[d.feature_id].data.title : "");
+        const st = allById[h.stage_id];
+        return [fmt_(g.t.at), g.t.by, kindTR[h.kind] || h.kind, ad, h.kind === "stage" ? "" : (st ? st.data.name : ""), g.n];
+      }), [130, 120, 80, 260, 200, 90]);
+
   // sekme sırası
-  ["Etaplar", "Rotalar", "Noktalar", "Notlar", "Fotoğraflar"].forEach(function (n, i) {
+  ["Etaplar", "Rotalar", "Noktalar", "Notlar", "Fotoğraflar", "Geri Dönüşüm"].forEach(function (n, i) {
     const s = ss_().getSheetByName(n); if (s) { ss_().setActiveSheet(s); ss_().moveActiveSheet(i + 1); }
   });
 }
