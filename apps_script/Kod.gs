@@ -47,7 +47,12 @@ function doPost(e) {
   try {
     switch (req.op) {
       case "ping":   return json_({ ok: true, sheet: ss_().getName(), users: KULLANICILAR });
-      case "push":   return json_(push_(req.rows || []));
+      case "push": {
+        const res = push_(req.rows || []);
+        const gap = res._refresh; delete res._refresh;
+        refreshAfterPush_(gap);
+        return json_(res);
+      }
       case "pull":   return json_(pull_(Number(req.since) || 0, Math.min(Number(req.limit) || 2000, 5000)));
       case "upload": return json_(upload_(req));
       default:       return json_({ ok: false, error: "Bilinmeyen işlem: " + req.op });
@@ -149,10 +154,22 @@ function push_(rows) {
     });
     if (appends.length) sh.getRange(sh.getLastRow() + 1, 1, appends.length, COLS.length).setValues(appends);
     SpreadsheetApp.flush();
-    return { ok: true, added: appends.length, updated: updated, skipped: skipped };
+    const onlyPoints = list.every(function (r) { return r.kind === "point"; });
+    return { ok: true, added: appends.length, updated: updated, skipped: skipped, _refresh: onlyPoints ? 120 : 0 };
   } finally {
     lock.releaseLock();
   }
+}
+
+// Okunur sekmeleri gönderimden hemen sonra güncelle (yalnız rota noktası geldiyse en fazla 2 dakikada bir)
+function refreshAfterPush_(minGapSec) {
+  try {
+    const p = PropertiesService.getScriptProperties();
+    const last = Number(p.getProperty("LAST_REPORT") || 0);
+    if (Date.now() - last < minGapSec * 1000) return;
+    p.setProperty("LAST_REPORT", String(Date.now()));
+    tablolariGuncelle();
+  } catch (e) { console.warn("tablo güncelleme: " + e); }
 }
 
 function pull_(since, limit) {

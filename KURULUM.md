@@ -50,7 +50,20 @@ Kod **dar izinle** çalışır. Yalnızca T-Route e-tablosuna ve kendi oluşturd
 
 Uygulama tabloya Hülya Hanım'ın adıyla yazar. Bu yüzden tablonun da klasörün de herkese açık olması gerekmez. Bu GitHub deposu ise herkese açık. İkisinde de **Paylaş → Genel erişim: Kısıtlı** seçip Gökhan Bey'i e-postasıyla eklemeniz önerilir. Fotoğraflar tek tek "bağlantıya sahip olanlar görüntüleyebilir" ayarıyla kaydedilir; uygulama fotoğrafları bu sayede gösterebilir. Bu bağlantılar tahmin edilemez.
 
-## 2. Telefonlarda ilk açılış
+## 2A. Android uygulaması (önerilen)
+
+Android telefonlarda tarayıcı yerine kurulu uygulamayı kullanın. **Ekran kilitliyken de GPS rotası kaydı sürer**, harita ve veriler telefonda kalıcı olarak durur.
+
+1. Telefonda şu bağlantıyı açın: **https://github.com/EvlaMutlu/t-route/releases/latest/download/T-Route.apk**
+2. İnen **T-Route.apk** dosyasını açın. Telefon "bilinmeyen kaynaklardan yükleme" izni isterse **Ayarlar → Bu kaynaktan izin ver**'i açın ve **Yükle**'ye basın.
+   *(Play Protect "tanınmayan uygulama" uyarısı verebilir: **Yine de yükle** deyin. Uygulama Play Store'da yayımlanmadığı için bu uyarı normaldir.)*
+3. Uygulamayı açın. İlk ekrana ya web uygulaması adresini ve ekip şifresini girin, ya da ortağınızın gönderdiği **kurulum bağlantısını** adres kutusuna yapıştırın.
+4. İzinler: konum için **"Uygulamayı kullanırken"** seçin. Bildirim izni de verin; kayıt sırasında "T-Route rota kaydediyor" bildirimi görünür ve kaydın sürdüğünü gösterir.
+5. Bazı telefonlarda (Xiaomi, Huawei, Samsung) pil tasarrufu arka plandaki uygulamayı kapatabilir. **Ayarlar → Uygulamalar → T-Route → Pil → Kısıtlama yok / Optimize etme** seçeneğini açın.
+6. **Güncelleme:** aynı bağlantıdan yeni APK'yı indirip yükleyin. Veriler silinmez.
+
+## 2B. Tarayıcıdan kullanım (iPhone ya da APK kurulamayan telefonlar)
+
 
 1. **Hülya Hanım'ın telefonunda** https://evlamutlu.github.io/T-Route/ adresini açın. *Google Drive bağlantısı* ekranında web uygulaması URL'sini ve ekip şifresini girip **Bağlan ve devam et**'e basın.
 2. **Menü → Ortağa kurulum bağlantısı** ile oluşan bağlantıyı Gökhan Bey'e WhatsApp'tan gönderin. Bağlantıyı açınca her şey kendiliğinden girilir. *(Bağlantının içinde şifre olduğu için ekip dışına göndermeyin.)*
@@ -98,7 +111,7 @@ Her kayıt önce telefona yazılır. Üstteki gösterge kaç kaydın beklediğin
 
 ## 6. Bilinmesi gerekenler
 
-- **Ekran kilitlenince GPS kaydı durur.** Telefon tarayıcıları arka planda konum vermez. Uygulama kayıt sırasında ekranı açık tutmaya çalışır. Ekran kapanırsa, açtığınızda kayıt sürer ve boşluk düz çizgiyle birleşir. Bunu *Rotayı düzenle* ile düzeltebilirsiniz.
+- **Tarayıcıda ekran kilitlenince GPS kaydı durur** (Android uygulamasında sürer). Telefon tarayıcıları arka planda konum vermez. Uygulama kayıt sırasında ekranı açık tutmaya çalışır. Ekran kapanırsa, açtığınızda kayıt sürer ve boşluk düz çizgiyle birleşir. Bunu *Rotayı düzenle* ile düzeltebilirsiniz.
 - Ağaç altında ve kayalık yamaçlarda GPS sapabilir. Menü → GPS ayarlarından *en kötü doğruluk* (varsayılan 35 m) ve *minimum nokta aralığı* (varsayılan 4 m) değiştirilebilir.
 - **"_kayitlar" ve "_fotolar" sekmelerini elle değiştirmeyin.** Uygulama bu sekmelerle çalışır. Okunur sekmeler (Etaplar, Rotalar…) her güncellemede yeniden yazılır. Kendi notlarınız için ayrı bir sekme açın.
 - Silinen kayıtlar kalıcı olarak silinmez. `_kayitlar` sekmesinde `deleted = 1` olarak durur. Geri getirmek için bu değeri `0` yapın ve aynı satırın `seq` değerini büyük bir sayı yapın (ör. 999999).
