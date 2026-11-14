@@ -1,9 +1,15 @@
-# t-road · Termessos Saha Defteri
+# T-Route · Termessos Saha Defteri
 
-Termessos Antik Kenti çevresinde saha gezisi için mobil web uygulaması: GPS ile rota kaydı, rota düzenleme, etaplar, nokta/not/fotoğraf girişi. İki kullanıcı (Hülya Aybek, Gökhan Deniz) ortak çalışır; veriler Google Drive'da (Google E-Tablo + fotoğraf klasörü) birikir.
+Termessos Antik Kenti çevresinde, yol bilgisi olmayan arazide **rota oluşturmak** için mobil web uygulaması. Şunları yapar:
 
-- Uygulama: https://evlamutlu.github.io/t-road/
+- GPS ile rota kaydı ve rotayı elle çizme ya da düzenleme
+- etaplar
+- nokta, not ve fotoğraf girişi
+
+İki kullanıcı (Hülya Aybek, Gökhan Deniz) birlikte çalışır. Veriler Hülya Aybek'in Google Drive'ındaki **T-Route** e-tablosunda ve klasöründe birikir.
+
+- Uygulama: https://evlamutlu.github.io/T-Route/
 - Kurulum ve kullanım: [KURULUM.md](KURULUM.md)
-- Drive sunucu kodu: [apps_script/Kod.gs](apps_script/Kod.gs)
+- Drive sunucu kodu (Apps Script): [apps_script/Kod.gs](apps_script/Kod.gs)
 
-Bu depoda hiçbir şifre veya sunucu adresi bulunmaz; bunlar telefonlarda uygulama içinden girilir.
+Ekip şifresi ve web uygulaması adresi bu depoda bulunmaz; ikisi de telefonlarda uygulama içinden girilir.

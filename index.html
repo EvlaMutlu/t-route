@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<title>Termessos Saha Defteri</title>
+<title>T-Route · Termessos</title>
 <meta name="theme-color" content="#2f2a22">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Termessos">
+<meta name="apple-mobile-web-app-title" content="T-Route">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -185,7 +185,7 @@ textarea.in{min-height:90px;resize:vertical}
 
 <script>
 /* =====================================================================
-   TERMESSOS SAHA DEFTERİ
+   T-ROUTE · TERMESSOS SAHA DEFTERİ
    Sunucu bilgilerini buraya yazabilir ya da uygulama içindeki
    "Sunucu ayarları" ekranından girebilirsiniz.
    ===================================================================== */
@@ -847,7 +847,7 @@ async function openMenu(){
     <button class="btn s" id="mTiles">Görünen alanı indir</button> <span class="muted" id="mTilesTxt"></span>
     <h3>GPS ayarları</h3>
     <div class="row"><label class="muted">Min. nokta aralığı (m) <input class="in" id="sMin" type="number" inputmode="decimal" value="${SET.minDist}" style="width:80px;padding:6px"></label><label class="muted">Kabul edilen en kötü doğruluk (m) <input class="in" id="sAcc" type="number" inputmode="decimal" value="${SET.maxAcc}" style="width:80px;padding:6px"></label></div>
-    <p class="muted" style="margin-top:14px">Termessos Saha Defteri · Kayıtlar iki kullanıcı arasında birikimli olarak tutulur; silinenler de “silindi” işaretiyle sunucuda saklanır.</p>
+    <p class="muted" style="margin-top:14px">T-Route · Kayıtlar iki kullanıcı arasında birikimli olarak tutulur; silinenler de “silindi” işaretiyle sunucuda saklanır.</p>
   `, bd=>{
     $("#mUser").onclick=()=>{ closeSheet(); startFlow(true); };
     const s=$("#mSync"); if(s) s.onclick=async()=>{ syncErr=null; await sync(); openMenu(); };
@@ -857,11 +857,11 @@ async function openMenu(){
     $("#mRenS").onclick=async()=>{ const st=R.get(STAGE); if(!st) return; const v=await ask({title:"Etap adı", input:{value:st.data.name}, buttons:[["Vazgeç","",false],["Kaydet","p",true]]}); if(v){ await saveRec(patch(st,{name:v})); openMenu(); } };
     const stTr=()=>recs("track").filter(t=>t.stage_id===STAGE), stFe=()=>recs("feature").filter(f=>f.stage_id===STAGE);
     const stName=slug(R.get(STAGE)?.data.name||"etap");
-    $("#mGeo1").onclick=()=>download(`termessos_${stName}.geojson`, JSON.stringify(geojson(stTr(),stFe()),null,1), "application/geo+json");
-    $("#mGeo2").onclick=()=>download(`termessos_tum_etaplar.geojson`, JSON.stringify(geojson(recs("track"),recs("feature")),null,1), "application/geo+json");
-    $("#mGpx1").onclick=()=>download(`termessos_${stName}.gpx`, gpx(stTr(),stFe()), "application/gpx+xml");
-    $("#mGpx2").onclick=()=>download(`termessos_tum_etaplar.gpx`, gpx(recs("track"),recs("feature")), "application/gpx+xml");
-    $("#mCsv").onclick=()=>download(`termessos_noktalar.csv`, csv(recs("feature")), "text/csv");
+    $("#mGeo1").onclick=()=>download(`t-route_${stName}.geojson`, JSON.stringify(geojson(stTr(),stFe()),null,1), "application/geo+json");
+    $("#mGeo2").onclick=()=>download(`t-route_tum_etaplar.geojson`, JSON.stringify(geojson(recs("track"),recs("feature")),null,1), "application/geo+json");
+    $("#mGpx1").onclick=()=>download(`t-route_${stName}.gpx`, gpx(stTr(),stFe()), "application/gpx+xml");
+    $("#mGpx2").onclick=()=>download(`t-route_tum_etaplar.gpx`, gpx(recs("track"),recs("feature")), "application/gpx+xml");
+    $("#mCsv").onclick=()=>download(`t-route_noktalar.csv`, csv(recs("feature")), "text/csv");
     $("#mTiles").onclick=downloadTiles;
     $("#sMin").onchange=e=>{ SET.minDist=Math.max(0,+e.target.value||4); ls.set("settings",SET); };
     $("#sAcc").onchange=e=>{ SET.maxAcc=Math.max(5,+e.target.value||35); ls.set("settings",SET); };
@@ -892,7 +892,7 @@ function geojson(tracks, feats){
 }
 const xesc=s=>String(s??"").replace(/[<>&"']/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"}[c]));
 function gpx(tracks, feats){
-  let s=`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Termessos Saha Defteri" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>Termessos</name><time>${nowISO()}</time></metadata>\n`;
+  let s=`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="T-Route" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>T-Route Termessos</name><time>${nowISO()}</time></metadata>\n`;
   for(const f of feats){ const x=featExtras(f); s+=`<wpt lat="${f.data.lat}" lon="${f.data.lng}">${f.data.alt!=null?`<ele>${f.data.alt}</ele>`:""}<time>${f.created_at}</time><name>${xesc(f.data.title)}</name><desc>${xesc((CAT[f.data.category]?.name||"")+" | "+f.created_by+(x.notes?"\n"+x.notes:""))}</desc><type>${xesc(CAT[f.data.category]?.name||"")}</type></wpt>\n`; }
   for(const t of tracks){ const pts=trackPoints(t.id); if(!pts.length) continue; s+=`<trk><name>${xesc(t.data.name)}</name><desc>${xesc(t.created_by+" | "+(R.get(t.stage_id)?.data.name||""))}</desc><trkseg>\n`; for(const p of pts) s+=`<trkpt lat="${p.data.lat}" lon="${p.data.lng}">${p.data.alt!=null?`<ele>${p.data.alt}</ele>`:""}${p.data.t?`<time>${p.data.t}</time>`:""}</trkpt>\n`; s+=`</trkseg></trk>\n`; }
   return s+"</gpx>\n";
@@ -922,13 +922,13 @@ async function downloadTiles(){
 }
 
 /* ---------------- başlangıç ekranları ---------------- */
-function screen(html, mount){ const s=$("#screen"); s.innerHTML=`<div class="wrap"><div class="brand"><img src="icon.svg" alt="" onerror="this.style.display='none'"><div><h1>Termessos Saha Defteri</h1><p>Rota, not ve fotoğraf kaydı</p></div></div>${html}</div>`; s.classList.remove("hidden"); s.scrollTop=0; if(mount) mount(s); }
+function screen(html, mount){ const s=$("#screen"); s.innerHTML=`<div class="wrap"><div class="brand"><img src="icon.svg" alt="" onerror="this.style.display='none'"><div><h1>T-Route</h1><p>Termessos saha rotası · not ve fotoğraf kaydı</p></div></div>${html}</div>`; s.classList.remove("hidden"); s.scrollTop=0; if(mount) mount(s); }
 function hideScreen(){ $("#screen").classList.add("hidden"); }
 
 function serverScreen(fromMenu){
   const c=cfg();
   screen(`<h3 style="margin-top:0">Google Drive bağlantısı</h3>
-    <p class="muted">Kayıtlar Hülya Aybek’in Google Drive’ındaki “Termessos Saha Verileri” tablosunda, fotoğraflar “Termessos Fotoğraflar” klasöründe toplanır. Kurulum kılavuzundaki adımlarla aldığınız bilgileri girin. Ortağınız size bir kurulum bağlantısı gönderdiyse onu açmanız yeterli.</p>
+    <p class="muted">Kayıtlar Hülya Aybek’in Google Drive’ındaki “T-Route” e-tablosunda, fotoğraflar “T-Route” klasöründe toplanır. Kurulum kılavuzundaki adımlarla aldığınız bilgileri girin. Ortağınız size bir kurulum bağlantısı gönderdiyse onu açmanız yeterli.</p>
     <label class="f">Web uygulaması adresi</label><textarea class="in" id="sUrl" style="min-height:70px;font-size:13px" autocapitalize="off" autocorrect="off" placeholder="https://script.google.com/macros/s/…/exec" ${CONFIG.SCRIPT_URL?"readonly":""}>${esc(c.url||"")}</textarea>
     <label class="f">Ekip şifresi</label><input class="in" id="sKey" value="${esc(c.key||"")}" autocapitalize="off" autocorrect="off" placeholder="Apps Script’te belirlediğiniz şifre">
     <div style="height:14px"></div>

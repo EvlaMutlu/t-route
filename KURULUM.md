@@ -1,42 +1,48 @@
-# Termessos Saha Defteri: Kurulum ve Kullanım
+# T-Route · Termessos Saha Defteri: Kurulum ve Kullanım
 
-Telefonda çalışan bir web uygulaması. **Hülya Aybek** ve **Gökhan Deniz** aynı anda ya da farklı zamanlarda rota kaydeder, nokta işaretler, not yazar ve fotoğraf yükler. Tüm kayıtlar **Hülya Aybek'in Google Drive'ında** birikir:
+T-Route telefonda çalışan bir web uygulaması. **Hülya Aybek** ve **Gökhan Deniz** aynı anda ya da farklı zamanlarda rota oluşturur, nokta işaretler, not yazar ve fotoğraf yükler. Tüm kayıtlar **Hülya Aybek'in Google Drive'ında** birikir:
 
-- **"Termessos Saha Verileri"** Google E-Tablosu: Etaplar, Rotalar, Noktalar, Notlar ve Fotoğraflar sekmeleri. *Dosya → İndir → Microsoft Excel (.xlsx)* ile Excel olarak indirilebilir.
-- **"Termessos Fotoğraflar / Etap adı /"** klasörleri: fotoğraflar `NoktaAdı_HA_20261114_103522.jpg` biçiminde kaydedilir (HA = Hülya Aybek, GD = Gökhan Deniz).
+- [**T-Route** e-tablosu](https://docs.google.com/spreadsheets/d/1KZMehkYp0wLBp83jTtLL57ij0pUGUqs_9H7YaTJb4c4/edit): Etaplar, Rotalar, Noktalar, Notlar ve Fotoğraflar sekmeleri. *Dosya → İndir → Microsoft Excel (.xlsx)* ile Excel olarak indirilebilir.
+- [**T-Route** klasörü](https://drive.google.com/drive/folders/13yDvPEQVq-CQv3Q006GAMu4R1OUSy80J): fotoğraflar etap adlı alt klasörlere `NoktaAdı_HA_20261114_103522.jpg` biçiminde kaydedilir (HA = Hülya Aybek, GD = Gökhan Deniz).
 
-Uygulama adresi: **https://evlamutlu.github.io/t-road/**
-
-Kurulumu Hülya Hanım bir kez, bilgisayardan yapar. Yaklaşık 10 dakika sürer.
+Uygulama adresi: **https://evlamutlu.github.io/T-Route/**
 
 ---
 
-## 1. Drive tarafını kurun (Hülya Aybek'in hesabıyla)
+## 0. GitHub Pages'i açın (bir kez)
 
-1. https://sheets.new adresini açın. Yeni bir e-tablo oluşur. Adını **Termessos Saha Verileri** yapın.
-2. Menüden **Uzantılar → Apps Script**'i açın.
-3. Açılan sayfadaki `Kod.gs` içeriğini tamamen silin. Bu depodaki `apps_script/Kod.gs` dosyasının **tamamını** kopyalayıp yapıştırın.
-4. Kodun başındaki satırı kendi ekip şifrenizle değiştirin:
+GitHub'da depoyu açın: **Settings → Pages → Source: "Deploy from a branch" → Branch: main, / (root) → Save**. Bir iki dakika sonra uygulama yukarıdaki adreste açılır.
+
+## 1. Drive tarafını kurun (Hülya Aybek'in hesabıyla, bilgisayardan)
+
+1. **T-Route** e-tablosunu açın. Menüden **Uzantılar → Apps Script**'i seçin.
+2. Açılan sayfadaki `Kod.gs` içeriğini tamamen silin. Bu depodaki [`apps_script/Kod.gs`](apps_script/Kod.gs) dosyasının **tamamını** kopyalayıp yapıştırın. Tablo ve klasör kimlikleri kodda hazır yazılı.
+3. Kodun başındaki satırı kendi ekip şifrenizle değiştirin:
    ```js
    const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";   →   const EKIP_SIFRESI = "termessos-ilkbahar-73";
    ```
-   (Tahmin edilmesi zor bir şey seçin. Bu şifre GitHub'a **yazılmaz**, yalnızca bu kodda ve iki telefonda durur.)
-5. **💾 Kaydet**'e basın. Üstteki işlev listesinden **kurulum**'u seçip **▶ Çalıştır**'a basın.
-   - Google izin isteyecek: *İzinleri incele → hesabınızı seçin → "Google bu uygulamayı doğrulamadı" uyarısında **Gelişmiş → Termessos'a git (güvenli değil)** → İzin ver.*
-     Uyarı normaldir: kodu siz yazdınız, Google onu incelemediği için bu uyarıyı gösterir. Kod yalnızca bu tabloya ve oluşturduğu fotoğraf klasörüne erişir.
-   - Kurulum sekmeleri ve fotoğraf klasörünü oluşturur ve tabloyu 10 dakikada bir güncelleyecek zamanlayıcıyı kurar.
-6. **Dağıt → Yeni dağıtım** seçeneğini açın. ⚙ simgesinden **Web uygulaması**'nı seçin ve şu ayarları yapın:
-   - *Açıklama:* Termessos
-   - *Şu kullanıcı olarak yürüt:* **Ben (Hülya Aybek'in e-postası)**
+   Tahmin edilmesi zor bir şey seçin. Bu şifre GitHub'a **yazılmaz**; yalnızca bu kodda ve iki telefonda durur.
+4. **💾 Kaydet**'e basın. Üstteki işlev listesinden **kurulum**'u seçip **▶ Çalıştır**'a basın.
+   - Google izin isteyecek: *İzinleri incele → hesabınızı seçin → "Google bu uygulamayı doğrulamadı" uyarısında **Gelişmiş → (proje adı)'na git (güvenli değil)** → İzin ver.*
+     Uyarı normaldir: kodu siz eklediniz, Google onu incelemediği için bu uyarıyı gösterir.
+   - Kurulum tablo sekmelerini oluşturur, fotoğraf klasörünü bağlar ve tabloyu 10 dakikada bir güncelleyecek zamanlayıcıyı kurar.
+5. **Dağıt → Yeni dağıtım** seçeneğini açın. ⚙ simgesinden **Web uygulaması**'nı seçin ve şu ayarları yapın:
+   - *Şu kullanıcı olarak yürüt:* **Ben (Hülya Aybek)**
    - *Erişimi olan kullanıcılar:* **Herkes**
    - **Dağıt**'a basın. Çıkan **Web uygulaması URL'sini** (`https://script.google.com/macros/s/…/exec`) kopyalayın.
 
 > "Herkes" ayarı, telefonların Google'a giriş yapmadan veri gönderebilmesi için gereklidir. Ekip şifresini bilmeyen hiçbir istek kabul edilmez.
 > Kodu ileride değiştirirseniz **Dağıt → Dağıtımları yönet → ✏️ → Sürüm: Yeni sürüm** ile güncelleyin. Böylece URL aynı kalır.
 
+### Paylaşım ayarı (önemli)
+
+Uygulama tabloya ve klasöre Hülya Hanım'ın adıyla yazar. Bu yüzden ikisinin **herkese açık olması gerekmez**. Bu GitHub deposu herkese açık ve tablo ile klasör kimlikleri kodda yazılı. Bağlantı ayarı "herkes" olarak kalırsa, depoyu gören herkes verileri açabilir; düzenleme izni varsa değiştirebilir de.
+
+Önerilen ayar: tabloda ve klasörde **Paylaş → Genel erişim: Kısıtlı** seçin, Gökhan Bey'i e-postasıyla ekleyin. Uygulamanın fotoğrafları gösterebilmesi için her fotoğraf tek tek "bağlantıya sahip olanlar görüntüleyebilir" ayarıyla kaydedilir. Bu bağlantılar tahmin edilemez.
+
 ## 2. Telefonlarda ilk açılış
 
-1. **Hülya Hanım'ın telefonunda** https://evlamutlu.github.io/t-road/ adresini açın. *Google Drive bağlantısı* ekranında web uygulaması URL'sini ve ekip şifresini girip **Bağlan ve devam et**'e basın.
+1. **Hülya Hanım'ın telefonunda** https://evlamutlu.github.io/T-Route/ adresini açın. *Google Drive bağlantısı* ekranında web uygulaması URL'sini ve ekip şifresini girip **Bağlan ve devam et**'e basın.
 2. **Menü → Ortağa kurulum bağlantısı** ile oluşan bağlantıyı Gökhan Bey'e WhatsApp'tan gönderin. Bağlantıyı açınca her şey kendiliğinden girilir. *(Bağlantının içinde şifre olduğu için ekip dışına göndermeyin.)*
 3. Uygulamayı ana ekrana ekleyin:
    - **iPhone (Safari):** Paylaş → *Ana Ekrana Ekle*

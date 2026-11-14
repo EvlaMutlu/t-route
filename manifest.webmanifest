@@ -1,6 +1,6 @@
 {
-  "name": "Termessos Saha Defteri",
-  "short_name": "Termessos",
+  "name": "T-Route · Termessos Saha Defteri",
+  "short_name": "T-Route",
   "description": "Termessos saha gezisi için rota, not ve fotoğraf kaydı",
   "lang": "tr",
   "start_url": "./",

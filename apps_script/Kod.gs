@@ -1,13 +1,13 @@
 /**
- * TERMESSOS SAHA DEFTERİ – Google Drive sunucusu
+ * T-ROUTE · TERMESSOS SAHA DEFTERİ – Google Drive sunucusu
  * -----------------------------------------------------------------
- * Bu kod, Hülya Aybek'in Google hesabındaki "Termessos Saha Verileri"
- * e-tablosuna bağlı çalışır (Uzantılar → Apps Script).
+ * Bu kod, Hülya Aybek'in Google hesabındaki "T-Route" e-tablosuna bağlı
+ * çalışır (Uzantılar → Apps Script). Fotoğraflar "T-Route" Drive klasörüne gider.
  *
  *  • Telefonlardan gelen tüm kayıtlar "_kayitlar" sekmesinde birikir.
  *  • Okunur sekmeler (Etaplar, Rotalar, Noktalar, Notlar, Fotoğraflar)
  *    10 dakikada bir ve "Termessos" menüsünden güncellenir.
- *  • Fotoğraflar Drive'da "Termessos Fotoğraflar / <Etap adı>/" altına kaydedilir.
+ *  • Fotoğraflar Drive'da "T-Route / <Etap adı>/" altına kaydedilir.
  *
  * TEK YAPMANIZ GEREKEN: aşağıdaki EKIP_SIFRESI değerini değiştirmek,
  * sonra "kurulum" işlevini bir kez çalıştırmak ve web uygulaması olarak
@@ -15,7 +15,10 @@
  */
 const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";
 
-const KLASOR_ADI = "Termessos Fotoğraflar";
+// Hülya Aybek'in Drive'ındaki dosyalar (bağlantılardaki kimlikler)
+const TABLO_ID = "1KZMehkYp0wLBp83jTtLL57ij0pUGUqs_9H7YaTJb4c4";   // T-Route e-tablosu
+const KLASOR_ID = "13yDvPEQVq-CQv3Q006GAMu4R1OUSy80J";            // T-Route fotoğraf klasörü
+const KLASOR_ADI = "T-Route Fotoğraflar";                         // KLASOR_ID açılamazsa yedek
 const HAM = "_kayitlar";
 const FOTO_INDEX = "_fotolar";
 const COLS = ["id", "kind", "stage_id", "data", "created_by", "created_at", "updated_at", "updated_by", "deleted", "seq"];
@@ -29,7 +32,7 @@ const TURLER = {
 /* ============================ web uygulaması ============================ */
 
 function doGet() {
-  return json_({ ok: true, info: "Termessos Saha Defteri sunucusu çalışıyor." });
+  return json_({ ok: true, info: "T-Route sunucusu çalışıyor." });
 }
 
 function doPost(e) {
@@ -57,6 +60,7 @@ function json_(o) {
 /* ============================ yardımcılar ============================ */
 
 function ss_() {
+  if (TABLO_ID) return SpreadsheetApp.openById(TABLO_ID);
   const id = PropertiesService.getScriptProperties().getProperty("SS_ID");
   return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
 }
@@ -170,6 +174,7 @@ function pullLocked_(since, limit) {
 /* ============================ fotoğraflar ============================ */
 
 function rootFolder_() {
+  if (KLASOR_ID) { try { return DriveApp.getFolderById(KLASOR_ID); } catch (e) {} }
   const p = PropertiesService.getScriptProperties();
   const id = p.getProperty("FOLDER_ID");
   if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
@@ -210,7 +215,7 @@ function upload_(req) {
 /* ============================ okunur sekmeler ============================ */
 
 function onOpen() {
-  SpreadsheetApp.getUi().createMenu("Termessos")
+  SpreadsheetApp.getUi().createMenu("T-Route")
     .addItem("Tabloları şimdi güncelle", "tablolariGuncelle")
     .addItem("Kurulumu çalıştır", "kurulum")
     .addToUi();
@@ -313,13 +318,13 @@ function tablolariGuncelle() {
 
 function kurulum() {
   const p = PropertiesService.getScriptProperties();
-  p.setProperty("SS_ID", SpreadsheetApp.getActiveSpreadsheet().getId());
+  p.setProperty("SS_ID", ss_().getId());
   rawSheet_(); photoIndex_(); rootFolder_();
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "tablolariGuncelle") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("tablolariGuncelle").timeBased().everyMinutes(10).create();
   tablolariGuncelle();
-  const def = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sayfa1") || SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Sheet1");
-  if (def && def.getLastRow() === 0 && SpreadsheetApp.getActiveSpreadsheet().getSheets().length > 1) SpreadsheetApp.getActiveSpreadsheet().deleteSheet(def);
+  const def = ss_().getSheetByName("Sayfa1") || ss_().getSheetByName("Sheet1");
+  if (def && def.getLastRow() === 0 && ss_().getSheets().length > 1) ss_().deleteSheet(def);
   if (EKIP_SIFRESI === "BURAYA-BIR-SIFRE-YAZIN") {
     throw new Error("Kurulum tamamlandı, ancak EKIP_SIFRESI hâlâ değiştirilmedi. Kodun başındaki şifreyi değiştirip kaydedin.");
   }
