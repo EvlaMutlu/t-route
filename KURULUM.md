@@ -3,7 +3,7 @@
 T-Route telefonda çalışan bir web uygulaması. **Hülya Aybek** ve **Gökhan Deniz** aynı anda ya da farklı zamanlarda rota oluşturur, nokta işaretler, not yazar ve fotoğraf yükler. Tüm kayıtlar **Hülya Aybek'in Google Drive'ında** birikir:
 
 - [**T-Route** e-tablosu](https://docs.google.com/spreadsheets/d/1KZMehkYp0wLBp83jTtLL57ij0pUGUqs_9H7YaTJb4c4/edit): Etaplar, Rotalar, Noktalar, Notlar ve Fotoğraflar sekmeleri. *Dosya → İndir → Microsoft Excel (.xlsx)* ile Excel olarak indirilebilir.
-- [**T-Route** klasörü](https://drive.google.com/drive/folders/13yDvPEQVq-CQv3Q006GAMu4R1OUSy80J): fotoğraflar etap adlı alt klasörlere `NoktaAdı_HA_20261114_103522.jpg` biçiminde kaydedilir (HA = Hülya Aybek, GD = Gökhan Deniz).
+- **T-Route Fotoğraflar** klasörü (kurulumda oluşturulur, istenirse [T-Route](https://drive.google.com/drive/folders/13yDvPEQVq-CQv3Q006GAMu4R1OUSy80J) klasörünün içine taşınabilir): fotoğraflar etap adlı alt klasörlere `NoktaAdı_HA_20261114_103522.jpg` biçiminde kaydedilir (HA = Hülya Aybek, GD = Gökhan Deniz).
 
 Uygulama adresi: **https://evlamutlu.github.io/T-Route/**
 
@@ -15,18 +15,30 @@ GitHub'da depoyu açın: **Settings → Pages → Source: "Deploy from a branch"
 
 ## 1. Drive tarafını kurun (Hülya Aybek'in hesabıyla, bilgisayardan)
 
+Kod **dar izinle** çalışır. Yalnızca T-Route e-tablosuna ve kendi oluşturduğu "T-Route Fotoğraflar" klasörüne erişir. Drive'daki diğer dosyaları göremez ve değiştiremez.
+
 1. **T-Route** e-tablosunu açın. Menüden **Uzantılar → Apps Script**'i seçin.
-2. Açılan sayfadaki `Kod.gs` içeriğini tamamen silin. Bu depodaki [`apps_script/Kod.gs`](apps_script/Kod.gs) dosyasının **tamamını** kopyalayıp yapıştırın. Tablo ve klasör kimlikleri kodda hazır yazılı.
-3. Kodun başındaki satırı kendi ekip şifrenizle değiştirin:
+2. **İzin dosyasını açın.** Sol kenardaki **⚙ Proje Ayarları**'na girin. **"appsscript.json" manifest dosyasını düzenleyicide göster** kutusunu işaretleyin.
+3. Sol kenardaki **<> Düzenleyici**'ye dönün. Dosya listesinde artık iki dosya var:
+   - **appsscript.json:** içini tamamen silin. Yerine depodaki [`apps_script/appsscript.json`](apps_script/appsscript.json) dosyasının tamamını yapıştırın.
+   - **Kod.gs:** içini tamamen silin (`function myFunction() {}` dahil). Yerine depodaki [`apps_script/Kod.gs`](apps_script/Kod.gs) dosyasının tamamını yapıştırın.
+
+   Kopyalamak için github.com/EvlaMutlu/t-route adresinde dosyayı açın ve sağ üstteki **"Copy raw file"** (iki kare) simgesine basın.
+4. Kod.gs'nin başındaki satırı kendi ekip şifrenizle değiştirin:
    ```js
    const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";   →   const EKIP_SIFRESI = "termessos-ilkbahar-73";
    ```
-   Tahmin edilmesi zor bir şey seçin. Bu şifre GitHub'a **yazılmaz**; yalnızca bu kodda ve iki telefonda durur.
-4. **💾 Kaydet**'e basın. Üstteki işlev listesinden **kurulum**'u seçip **▶ Çalıştır**'a basın.
-   - Google izin isteyecek: *İzinleri incele → hesabınızı seçin → "Google bu uygulamayı doğrulamadı" uyarısında **Gelişmiş → (proje adı)'na git (güvenli değil)** → İzin ver.*
-     Uyarı normaldir: kodu siz eklediniz, Google onu incelemediği için bu uyarıyı gösterir.
-   - Kurulum tablo sekmelerini oluşturur, fotoğraf klasörünü bağlar ve tabloyu 10 dakikada bir güncelleyecek zamanlayıcıyı kurar.
-5. **Dağıt → Yeni dağıtım** seçeneğini açın. ⚙ simgesinden **Web uygulaması**'nı seçin ve şu ayarları yapın:
+5. **💾 Kaydet**'e basın. Üstteki işlev listesinden **kurulum**'u seçip **▶ Çalıştır**'a basın.
+   Google izin isteyecek. "Google bu uygulamayı doğrulamadı" uyarısında **Gelişmiş → (proje adı)'na git (güvenli değil)** deyin. İstenen izinler yalnızca şunlar olmalı:
+   - *Bu uygulamanın yüklü olduğu e-tabloları görüntüleme ve yönetme* (yalnızca T-Route tablosu)
+   - *Yalnızca bu uygulamayla kullandığınız belirli Google Drive dosyalarını görme, düzenleme, oluşturma ve silme*
+   - *Harici bir hizmete bağlanma* (kodun Drive'a fotoğraf yükleyebilmesi için)
+   - *Siz yokken bu uygulamanın çalışmasına izin verme* (tabloyu 10 dakikada bir güncellemek için)
+   - *Başka uygulamalarda istemler ve kenar çubukları görüntüleme* (tablodaki "T-Route" menüsü için)
+
+   **"Google Drive'daki tüm dosyalarınızı görme…" yazıyorsa** appsscript.json yapıştırılmamış ya da kaydedilmemiştir. 2. ve 3. adımları kontrol edin.
+6. Kurulum tabloda Etaplar, Rotalar, Noktalar, Notlar ve Fotoğraflar sekmelerini açar. Drive'ınızda **"T-Route Fotoğraflar"** klasörünü de oluşturur. Bu klasörü isterseniz sürükleyip mevcut **T-Route** klasörünün içine taşıyabilirsiniz; uygulama yeni yerinde de çalışmaya devam eder.
+7. **Dağıt → Yeni dağıtım** seçeneğini açın. ⚙ simgesinden **Web uygulaması**'nı seçin ve şu ayarları yapın:
    - *Şu kullanıcı olarak yürüt:* **Ben (Hülya Aybek)**
    - *Erişimi olan kullanıcılar:* **Herkes**
    - **Dağıt**'a basın. Çıkan **Web uygulaması URL'sini** (`https://script.google.com/macros/s/…/exec`) kopyalayın.
@@ -34,11 +46,9 @@ GitHub'da depoyu açın: **Settings → Pages → Source: "Deploy from a branch"
 > "Herkes" ayarı, telefonların Google'a giriş yapmadan veri gönderebilmesi için gereklidir. Ekip şifresini bilmeyen hiçbir istek kabul edilmez.
 > Kodu ileride değiştirirseniz **Dağıt → Dağıtımları yönet → ✏️ → Sürüm: Yeni sürüm** ile güncelleyin. Böylece URL aynı kalır.
 
-### Paylaşım ayarı (önemli)
+### Paylaşım ayarı (önerilen)
 
-Uygulama tabloya ve klasöre Hülya Hanım'ın adıyla yazar. Bu yüzden ikisinin **herkese açık olması gerekmez**. Bu GitHub deposu herkese açık ve tablo ile klasör kimlikleri kodda yazılı. Bağlantı ayarı "herkes" olarak kalırsa, depoyu gören herkes verileri açabilir; düzenleme izni varsa değiştirebilir de.
-
-Önerilen ayar: tabloda ve klasörde **Paylaş → Genel erişim: Kısıtlı** seçin, Gökhan Bey'i e-postasıyla ekleyin. Uygulamanın fotoğrafları gösterebilmesi için her fotoğraf tek tek "bağlantıya sahip olanlar görüntüleyebilir" ayarıyla kaydedilir. Bu bağlantılar tahmin edilemez.
+Uygulama tabloya Hülya Hanım'ın adıyla yazar. Bu yüzden tablonun da klasörün de herkese açık olması gerekmez. Bu GitHub deposu ise herkese açık. İkisinde de **Paylaş → Genel erişim: Kısıtlı** seçip Gökhan Bey'i e-postasıyla eklemeniz önerilir. Fotoğraflar tek tek "bağlantıya sahip olanlar görüntüleyebilir" ayarıyla kaydedilir; uygulama fotoğrafları bu sayede gösterebilir. Bu bağlantılar tahmin edilemez.
 
 ## 2. Telefonlarda ilk açılış
 

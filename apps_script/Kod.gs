@@ -2,12 +2,18 @@
  * T-ROUTE · TERMESSOS SAHA DEFTERİ – Google Drive sunucusu
  * -----------------------------------------------------------------
  * Bu kod, Hülya Aybek'in Google hesabındaki "T-Route" e-tablosuna bağlı
- * çalışır (Uzantılar → Apps Script). Fotoğraflar "T-Route" Drive klasörüne gider.
+ * çalışır (Uzantılar → Apps Script).
+ *
+ * İZİNLER DAR TUTULDU (appsscript.json dosyasına bakın):
+ *  • yalnızca bu e-tablo (başka tablolara erişmez),
+ *  • Drive'da yalnızca bu kodun kendi oluşturduğu klasör ve fotoğraflar
+ *    (Drive'daki diğer dosyalarınızı göremez, değiştiremez).
  *
  *  • Telefonlardan gelen tüm kayıtlar "_kayitlar" sekmesinde birikir.
  *  • Okunur sekmeler (Etaplar, Rotalar, Noktalar, Notlar, Fotoğraflar)
  *    10 dakikada bir ve "Termessos" menüsünden güncellenir.
- *  • Fotoğraflar Drive'da "T-Route / <Etap adı>/" altına kaydedilir.
+ *  • Fotoğraflar Drive'da kodun oluşturduğu "T-Route Fotoğraflar / <Etap adı>/"
+ *    klasörüne kaydedilir. Bu klasörü dilediğiniz yere taşıyabilirsiniz.
  *
  * TEK YAPMANIZ GEREKEN: aşağıdaki EKIP_SIFRESI değerini değiştirmek,
  * sonra "kurulum" işlevini bir kez çalıştırmak ve web uygulaması olarak
@@ -15,10 +21,7 @@
  */
 const EKIP_SIFRESI = "BURAYA-BIR-SIFRE-YAZIN";
 
-// Hülya Aybek'in Drive'ındaki dosyalar (bağlantılardaki kimlikler)
-const TABLO_ID = "1KZMehkYp0wLBp83jTtLL57ij0pUGUqs_9H7YaTJb4c4";   // T-Route e-tablosu
-const KLASOR_ID = "13yDvPEQVq-CQv3Q006GAMu4R1OUSy80J";            // T-Route fotoğraf klasörü
-const KLASOR_ADI = "T-Route Fotoğraflar";                         // KLASOR_ID açılamazsa yedek
+const KLASOR_ADI = "T-Route Fotoğraflar";
 const HAM = "_kayitlar";
 const FOTO_INDEX = "_fotolar";
 const COLS = ["id", "kind", "stage_id", "data", "created_by", "created_at", "updated_at", "updated_by", "deleted", "seq"];
@@ -60,9 +63,7 @@ function json_(o) {
 /* ============================ yardımcılar ============================ */
 
 function ss_() {
-  if (TABLO_ID) return SpreadsheetApp.openById(TABLO_ID);
-  const id = PropertiesService.getScriptProperties().getProperty("SS_ID");
-  return id ? SpreadsheetApp.openById(id) : SpreadsheetApp.getActiveSpreadsheet();
+  return SpreadsheetApp.getActiveSpreadsheet();   // yalnızca kodun bağlı olduğu tablo
 }
 
 function rawSheet_() {
@@ -173,21 +174,42 @@ function pullLocked_(since, limit) {
 
 /* ============================ fotoğraflar ============================ */
 
-function rootFolder_() {
-  if (KLASOR_ID) { try { return DriveApp.getFolderById(KLASOR_ID); } catch (e) {} }
-  const p = PropertiesService.getScriptProperties();
-  const id = p.getProperty("FOLDER_ID");
-  if (id) { try { return DriveApp.getFolderById(id); } catch (e) {} }
-  const it = DriveApp.getFoldersByName(KLASOR_ADI);
-  const f = it.hasNext() ? it.next() : DriveApp.createFolder(KLASOR_ADI);
-  p.setProperty("FOLDER_ID", f.getId());
-  return f;
+// Drive'a yalnızca "drive.file" izniyle (kodun oluşturduğu dosyalar) REST üzerinden erişilir.
+function drive_(method, url, payload, contentType) {
+  const opt = { method: method, muteHttpExceptions: true, headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() } };
+  if (payload !== undefined) { opt.payload = payload; opt.contentType = contentType || "application/json"; }
+  const r = UrlFetchApp.fetch(url, opt);
+  const code = r.getResponseCode(), txt = r.getContentText();
+  if (code >= 300) throw new Error("Drive " + code + ": " + txt.slice(0, 300));
+  return txt ? JSON.parse(txt) : {};
 }
 
-function subFolder_(parent, name) {
+function folderAlive_(id) {
+  if (!id) return false;
+  try { return !drive_("get", "https://www.googleapis.com/drive/v3/files/" + id + "?fields=id,trashed").trashed; }
+  catch (e) { return false; }
+}
+
+function newFolder_(name, parentId) {
+  const body = { name: name, mimeType: "application/vnd.google-apps.folder" };
+  if (parentId) body.parents = [parentId];
+  return drive_("post", "https://www.googleapis.com/drive/v3/files?fields=id", JSON.stringify(body)).id;
+}
+
+function rootFolder_() {
+  const p = PropertiesService.getScriptProperties();
+  let id = p.getProperty("FOLDER_ID");
+  if (!folderAlive_(id)) { id = newFolder_(KLASOR_ADI); p.setProperty("FOLDER_ID", id); }
+  return id;
+}
+
+function subFolder_(parentId, name) {
   name = String(name || "Etapsız").replace(/[\\\/]+/g, "-").slice(0, 100);
-  const it = parent.getFoldersByName(name);
-  return it.hasNext() ? it.next() : parent.createFolder(name);
+  const p = PropertiesService.getScriptProperties();
+  const key = "SUB_" + parentId + "_" + Utilities.base64EncodeWebSafe(name).slice(0, 200);
+  let id = p.getProperty(key);
+  if (!folderAlive_(id)) { id = newFolder_(name, parentId); p.setProperty(key, id); }
+  return id;
 }
 
 function upload_(req) {
@@ -201,12 +223,19 @@ function upload_(req) {
       const v = ix.getRange(2, 1, last - 1, 2).getValues();
       for (let i = 0; i < v.length; i++) if (v[i][0] === req.path) return { ok: true, id: String(v[i][1]), existed: true };
     }
-    const blob = Utilities.newBlob(Utilities.base64Decode(req.b64), req.mime || "image/jpeg", req.name || "foto.jpg");
-    const file = subFolder_(rootFolder_(), req.folder).createFile(blob);
-    file.setDescription(req.path);
-    try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
-    ix.appendRow([req.path, file.getId()]);
-    return { ok: true, id: file.getId() };
+    const mime = req.mime || "image/jpeg";
+    const folderId = subFolder_(rootFolder_(), req.folder);
+    const boundary = "troute" + Date.now();
+    const meta = JSON.stringify({ name: req.name || "foto.jpg", parents: [folderId], description: req.path, mimeType: mime });
+    const head = Utilities.newBlob("--" + boundary + "\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n" + meta +
+                                   "\r\n--" + boundary + "\r\nContent-Type: " + mime + "\r\n\r\n").getBytes();
+    const tail = Utilities.newBlob("\r\n--" + boundary + "--").getBytes();
+    const body = head.concat(Utilities.base64Decode(req.b64)).concat(tail);
+    const id = drive_("post", "https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id", body, "multipart/related; boundary=" + boundary).id;
+    // uygulamanın fotoğrafı gösterebilmesi için: bağlantıya sahip olan görüntüleyebilir
+    try { drive_("post", "https://www.googleapis.com/drive/v3/files/" + id + "/permissions", JSON.stringify({ role: "reader", type: "anyone" })); } catch (e) {}
+    ix.appendRow([req.path, id]);
+    return { ok: true, id: id };
   } finally {
     lock.releaseLock();
   }
@@ -318,7 +347,6 @@ function tablolariGuncelle() {
 
 function kurulum() {
   const p = PropertiesService.getScriptProperties();
-  p.setProperty("SS_ID", ss_().getId());
   rawSheet_(); photoIndex_(); rootFolder_();
   ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === "tablolariGuncelle") ScriptApp.deleteTrigger(t); });
   ScriptApp.newTrigger("tablolariGuncelle").timeBased().everyMinutes(10).create();
