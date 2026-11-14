@@ -195,7 +195,7 @@ const CONFIG = {
     { name: "Hülya Aybek",  short: "HA", color: "#d9480f" },
     { name: "Gökhan Deniz", short: "GD", color: "#1971c2" }
   ],
-  CENTER: [36.9837, 30.4647],   // Termessos tiyatro çevresi
+  CENTER: [37.0107765718858, 30.479662234262374],   // haritanın açılış noktası
   ZOOM: 16
 };
 
@@ -401,7 +401,7 @@ async function preloadLocalBlobs(){
 /* ---------------- harita ---------------- */
 let map, layerTracks, layerFeats, layerEdit, layerMates, meMarker, meCircle;
 function initMap(){
-  map = L.map("map", {zoomControl:false, attributionControl:true, tap:true}).setView(ls.get("mapView",{c:CONFIG.CENTER}).c, ls.get("mapView",{z:CONFIG.ZOOM}).z||CONFIG.ZOOM);
+  map = L.map("map", {zoomControl:false, attributionControl:true, tap:true}).setView(ls.get("mapView2",{c:CONFIG.CENTER}).c, ls.get("mapView2",{z:CONFIG.ZOOM}).z||CONFIG.ZOOM);
   const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxNativeZoom:18, maxZoom:21, crossOrigin:true, attribution:"Uydu: Esri, Maxar, Earthstar Geographics"});
   const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {subdomains:"abc", maxNativeZoom:17, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları, SRTM | OpenTopoMap (CC-BY-SA)"});
   const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxNativeZoom:19, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları"});
@@ -412,7 +412,7 @@ function initMap(){
   L.control.zoom({position:"topright"}).addTo(map);
   L.control.scale({imperial:false, position:"bottomleft"}).addTo(map);
   layerTracks=L.layerGroup().addTo(map); layerFeats=L.layerGroup().addTo(map); layerMates=L.layerGroup().addTo(map); layerEdit=L.layerGroup().addTo(map);
-  map.on("moveend", ()=>{ ls.set("mapView",{c:[map.getCenter().lat,map.getCenter().lng], z:map.getZoom()}); if(editTrack) renderEdit(); });
+  map.on("moveend", ()=>{ ls.set("mapView2",{c:[map.getCenter().lat,map.getCenter().lng], z:map.getZoom()}); if(editTrack) renderEdit(); });
   map.on("click", onMapClick);
   map.on("dragstart", ()=>{ if(SET.follow){ SET.follow=false; ls.set("settings",SET); $("#followBtn").classList.remove("on"); } });
 }
