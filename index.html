@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Termessos Saha Defteri</title>
+<meta name="theme-color" content="#2f2a22">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Termessos">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+<style>
+:root{
+  --ink:#2b251c; --ink2:#5e5446; --paper:#f6f1e7; --paper2:#ece4d4; --line:#d8ccb6;
+  --accent:#a8492a; --pine:#2f5d50; --ok:#2b8a3e; --warn:#e67700; --bad:#c92a2a;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;color:var(--ink);background:var(--paper);font-size:16px}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+#map{position:absolute;inset:0;background:#cfc6b4;z-index:0}
+.hidden{display:none!important}
+
+/* top bar */
+#top{position:absolute;left:0;right:0;top:0;z-index:500;padding:calc(var(--safe-t) + 8px) 10px 8px;display:flex;gap:8px;align-items:center;pointer-events:none}
+#top>*{pointer-events:auto}
+.chip{background:rgba(246,241,231,.96);border:1px solid var(--line);border-radius:999px;padding:8px 12px;display:flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.15);min-height:40px}
+#stageChip{flex:1;min-width:0;text-align:left}
+#stageChip .t{font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#stageChip small{color:var(--ink2);font-size:12px}
+.dot{width:10px;height:10px;border-radius:50%;flex:none;background:#aaa}
+.av{width:28px;height:28px;border-radius:50%;color:#fff;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+#syncChip{gap:6px;font-size:13px}
+
+/* rec banner */
+#recBanner{position:absolute;left:10px;right:10px;top:calc(var(--safe-t) + 58px);z-index:499;background:var(--bad);color:#fff;border-radius:12px;padding:8px 12px;display:flex;align-items:center;gap:10px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#recBanner .pulse{width:12px;height:12px;border-radius:50%;background:#fff;animation:pulse 1.2s infinite}
+@keyframes pulse{0%{opacity:1}50%{opacity:.25}100%{opacity:1}}
+#editBanner,#pickBanner{position:absolute;left:10px;right:10px;top:calc(var(--safe-t) + 58px);z-index:499;background:var(--pine);color:#fff;border-radius:12px;padding:10px 12px;font-size:14px;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+#editBanner .row,#pickBanner .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+#editBanner button,#pickBanner button{background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:8px;padding:7px 10px;font-size:14px}
+#editBanner button.primary,#pickBanner button.primary{background:#fff;color:var(--pine);font-weight:650}
+
+/* fabs */
+#fabs{position:absolute;right:10px;bottom:calc(var(--safe-b) + 96px);z-index:500;display:flex;flex-direction:column;gap:10px}
+.fab{width:46px;height:46px;border-radius:50%;background:rgba(246,241,231,.97);border:1px solid var(--line);box-shadow:0 2px 8px rgba(0,0,0,.2);display:grid;place-items:center;font-size:20px}
+.fab.on{background:var(--pine);color:#fff;border-color:var(--pine)}
+
+/* bottom bar */
+#bar{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--paper);border-top:1px solid var(--line);padding:8px 8px calc(var(--safe-b) + 8px);display:grid;grid-template-columns:1.25fr 1.25fr 1fr 1fr;gap:6px;box-shadow:0 -2px 10px rgba(0,0,0,.08)}
+#bar button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12.5px;font-weight:600;min-height:58px;justify-content:center}
+#bar button .i{font-size:21px;line-height:1}
+#recBtn.rec{background:var(--bad);color:#fff;border-color:var(--bad)}
+#noteBtn{background:var(--accent)!important;color:#fff;border-color:var(--accent)!important}
+
+/* sheet */
+#scrim{position:absolute;inset:0;background:rgba(20,16,10,.35);z-index:700}
+#sheet{position:absolute;left:0;right:0;bottom:0;z-index:701;background:var(--paper);border-radius:18px 18px 0 0;max-height:88%;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.25)}
+#sheet .sh{display:flex;align-items:center;gap:8px;padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+#sheet .sh h2{margin:0;font-size:18px;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#sheet .sb{overflow:auto;padding:12px 14px calc(var(--safe-b) + 18px);-webkit-overflow-scrolling:touch}
+.x{border:none;background:var(--paper2);width:34px;height:34px;border-radius:50%;font-size:18px}
+
+/* overlay screens */
+#screen{position:absolute;inset:0;z-index:900;background:var(--paper);overflow:auto;padding:calc(var(--safe-t) + 24px) 20px calc(var(--safe-b) + 24px)}
+#screen .wrap{max-width:460px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:22px}
+.brand img{width:52px;height:52px;border-radius:12px}
+.brand h1{font-size:22px;margin:0;line-height:1.15}
+.brand p{margin:2px 0 0;color:var(--ink2);font-size:14px}
+.big{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px;font-size:17px;font-weight:600}
+.big .av{width:44px;height:44px;font-size:16px}
+.big.sel{outline:3px solid var(--pine)}
+.big small{display:block;font-weight:400;color:var(--ink2);font-size:13px;margin-top:2px}
+
+/* generic */
+h3{font-size:13px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink2);margin:18px 0 8px}
+label.f{display:block;font-size:13px;color:var(--ink2);margin:12px 0 4px;font-weight:600}
+.in{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:16px}
+textarea.in{min-height:90px;resize:vertical}
+.btn{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 14px;font-weight:600;font-size:15px}
+.btn.p{background:var(--pine);border-color:var(--pine);color:#fff}
+.btn.a{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.d{color:var(--bad);border-color:#efc4c4}
+.btn.s{padding:7px 10px;font-size:13.5px}
+.btn.w{width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.muted{color:var(--ink2);font-size:13px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.li{display:flex;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;margin-bottom:8px;width:100%;text-align:left}
+.li .m{flex:1;min-width:0}
+.li .m b{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sw{width:14px;height:14px;border-radius:4px;flex:none}
+.by{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;color:var(--ink2)}
+.by i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.tabs{display:flex;gap:6px;margin-bottom:12px;background:var(--paper2);padding:4px;border-radius:12px}
+.tabs button{flex:1;border:none;background:transparent;padding:8px;border-radius:9px;font-weight:600;font-size:14px}
+.tabs button.on{background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 11px;font-size:13.5px}
+.seg button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.cats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.cats button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 4px;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cats button span{font-size:20px}
+.cats button.on{outline:2px solid var(--pine);background:#eef5f2}
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ph{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:var(--paper2);border:none;padding:0}
+.ph img{width:100%;height:100%;object-fit:cover;display:block}
+.ph .cap{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:10.5px;padding:10px 5px 3px;text-align:left}
+.ph .pend{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.55);color:#fff;font-size:10px;border-radius:6px;padding:1px 5px}
+.entry{border-left:3px solid var(--line);padding:4px 0 4px 10px;margin:8px 0}
+.entry p{margin:3px 0 0;white-space:pre-wrap;word-wrap:break-word}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:14px}
+.kv span:nth-child(odd){color:var(--ink2)}
+.stat{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:8px 0}
+.stat div{background:var(--paper2);border-radius:10px;padding:8px;text-align:center}
+.stat b{display:block;font-size:17px}
+.stat small{font-size:11.5px;color:var(--ink2)}
+
+/* modal */
+#modal{position:absolute;inset:0;z-index:1000;background:rgba(20,16,10,.45);display:grid;place-items:center;padding:20px}
+#modal .box{background:var(--paper);border-radius:16px;padding:18px;width:100%;max-width:400px;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+#modal h4{margin:0 0 8px;font-size:18px}
+#modal .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+#viewer{position:absolute;inset:0;z-index:1100;background:#000;display:flex;flex-direction:column}
+#viewer img{flex:1;min-height:0;object-fit:contain;width:100%}
+#viewer .vb{color:#fff;padding:12px 14px calc(var(--safe-b) + 12px);display:flex;gap:10px;align-items:center;font-size:14px}
+#viewer .vt{color:#fff;padding:calc(var(--safe-t) + 10px) 14px 8px;display:flex;justify-content:flex-end}
+#toast{position:absolute;left:50%;bottom:calc(var(--safe-b) + 92px);transform:translateX(-50%);z-index:1200;background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;max-width:90%;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.3);transition:opacity .3s}
+
+/* map markers */
+.fm{width:34px;height:34px;border-radius:50% 50% 50% 4px;transform:rotate(-45deg);display:grid;place-items:center;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.4)}
+.fm span{transform:rotate(45deg);font-size:16px;line-height:1}
+.me{width:18px;height:18px;border-radius:50%;background:#1c7ed6;border:3px solid #fff;box-shadow:0 0 0 2px rgba(28,126,214,.35),0 1px 4px rgba(0,0,0,.4)}
+.mate{padding:2px 6px;border-radius:999px;color:#fff;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);white-space:nowrap;transform:translate(-50%,-50%);display:inline-block}
+.vx{width:18px;height:18px;border-radius:50%;background:#fff;border:3px solid var(--pine);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.vx.end{background:var(--pine)}
+.vmid{width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.75);border:2px dashed var(--pine)}
+.leaflet-popup-content{margin:10px 12px;font-size:14px}
+.leaflet-popup-content .btn{margin-top:6px}
+.leaflet-control-attribution{font-size:9px}
+.leaflet-top.leaflet-right{top:calc(var(--safe-t) + 56px)}
+.leaflet-bottom{bottom:calc(var(--safe-b) + 76px)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="top">
+  <button class="chip" id="stageChip"><span class="dot" id="stageDot" style="background:var(--accent)"></span><span style="min-width:0"><div class="t" id="stageName">—</div><small id="stageSub"></small></span></button>
+  <button class="chip" id="syncChip" title="Senkron durumu"><span class="dot" id="syncDot"></span><span id="syncTxt">…</span></button>
+  <button class="chip" id="meChip" style="padding:5px"><span class="av" id="meAv">?</span></button>
+</div>
+
+<div id="recBanner" class="hidden"><span class="pulse"></span><span id="recTxt" style="flex:1">Kayıt</span></div>
+<div id="editBanner" class="hidden"></div>
+<div id="pickBanner" class="hidden"></div>
+
+<div id="fabs">
+  <button class="fab" id="filterBtn" title="Görünüm">👁</button>
+  <button class="fab" id="followBtn" title="Konumumu takip et">◎</button>
+</div>
+
+<div id="bar">
+  <button id="recBtn"><span class="i">⏺</span><span id="recLbl">Rota kaydı</span></button>
+  <button id="noteBtn"><span class="i">📍</span>Not / Foto</button>
+  <button id="listBtn"><span class="i">🗂</span>Kayıtlar</button>
+  <button id="menuBtn"><span class="i">☰</span>Menü</button>
+</div>
+
+<div id="scrim" class="hidden"></div>
+<div id="sheet" class="hidden"><div class="sh"><h2 id="shTitle"></h2><button class="x" id="shClose">✕</button></div><div class="sb" id="shBody"></div></div>
+<div id="screen" class="hidden"></div>
+<div id="modal" class="hidden"></div>
+<div id="viewer" class="hidden"></div>
+<div id="toast" class="hidden"></div>
+
+<input type="file" id="fileCam" accept="image/*" capture="environment" class="hidden">
+<input type="file" id="fileLib" accept="image/*" multiple class="hidden">
+
+<script>
+/* =====================================================================
+   TERMESSOS SAHA DEFTERİ
+   Sunucu bilgilerini buraya yazabilir ya da uygulama içindeki
+   "Sunucu ayarları" ekranından girebilirsiniz.
+   ===================================================================== */
+const CONFIG = {
+  SCRIPT_URL: "",          // isteğe bağlı: Apps Script web uygulaması adresi (…/exec). Ekip şifresi buraya YAZILMAZ.
+  USERS: [
+    { name: "Hülya Aybek",  short: "HA", color: "#d9480f" },
+    { name: "Gökhan Deniz", short: "GD", color: "#1971c2" }
+  ],
+  CENTER: [36.9837, 30.4647],   // Termessos tiyatro çevresi
+  ZOOM: 16
+};
+
+const CATS = [
+  ["yapi","Yapı kalıntısı","🏛"],["duvar","Duvar / Sur","🧱"],["su","Sarnıç / Su yapısı","💧"],
+  ["mezar","Mezar / Lahit","⚱️"],["yazit","Yazıt","📜"],["mimari","Mimari parça","🗿"],
+  ["buluntu","Seramik / Buluntu","🏺"],["yol","Yol / Patika izi","👣"],["bitki","Bitki örtüsü","🌿"],
+  ["gozlem","Gözlem noktası","🔭"],["tehlike","Tehlike / Uyarı","⚠️"],["diger","Diğer","📌"]
+];
+const CAT = Object.fromEntries(CATS.map(c=>[c[0],{name:c[1],icon:c[2]}]));
+
+/* ---------------- yardımcılar ---------------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c=="x"?r:(r&3|8)).toString(16)}));
+const nowISO = () => new Date().toISOString();
+const ls = {
+  get(k, d=null){ try{ const v = localStorage.getItem("tsd_"+k); return v==null?d:JSON.parse(v);}catch(e){return d} },
+  set(k, v){ try{ localStorage.setItem("tsd_"+k, JSON.stringify(v)); }catch(e){} }
+};
+const userOf = name => CONFIG.USERS.find(u=>u.name===name) || {name: name||"?", short: (name||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase(), color:"#868e96"};
+const byTag = (name, iso) => `<span class="by"><i style="background:${userOf(name).color}"></i>${esc(name||"?")}${iso?" · "+fmtDT(iso):""}</span>`;
+function fmtDT(iso){ if(!iso) return ""; const d=new Date(iso); return d.toLocaleDateString("tr-TR",{day:"numeric",month:"short"})+" "+d.toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"}); }
+function fmtDur(ms){ if(!ms||ms<0) return "—"; const m=Math.round(ms/60000); return m<60? m+" dk" : Math.floor(m/60)+" sa "+(m%60)+" dk"; }
+function fmtLen(m){ return m<1000? Math.round(m)+" m" : (m/1000).toFixed(2)+" km"; }
+function hav(a,b){ const R=6371000, t=Math.PI/180; const dLat=(b.lat-a.lat)*t, dLng=(b.lng-a.lng)*t; const x=Math.sin(dLat/2)**2+Math.cos(a.lat*t)*Math.cos(b.lat*t)*Math.sin(dLng/2)**2; return 2*R*Math.asin(Math.sqrt(x)); }
+function toast(msg, ms=2600){ const t=$("#toast"); t.textContent=msg; t.classList.remove("hidden"); t.style.opacity=1; clearTimeout(toast._t); toast._t=setTimeout(()=>{t.style.opacity=0; setTimeout(()=>t.classList.add("hidden"),300)}, ms); }
+const debounce=(fn,ms)=>{let t;return (...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}};
+
+/* ---------------- modal ---------------- */
+function ask({title, html="", input=null, buttons=[["Tamam","p",true]]}){
+  return new Promise(res=>{
+    const m=$("#modal");
+    m.innerHTML=`<div class="box"><h4>${esc(title)}</h4>${html}${input?`<input class="in" id="mIn" value="${esc(input.value||"")}" placeholder="${esc(input.placeholder||"")}">`:""}<div class="acts">${buttons.map((b,i)=>`<button class="btn ${b[1]||""}" data-i="${i}">${esc(b[0])}</button>`).join("")}</div></div>`;
+    m.classList.remove("hidden");
+    const inp=$("#mIn"); if(inp){ setTimeout(()=>{inp.focus(); inp.select()},50); }
+    m.querySelectorAll(".acts button").forEach(b=>b.onclick=()=>{ const v=buttons[+b.dataset.i][2]; m.classList.add("hidden"); res(input? (v===false?null:(inp.value.trim()||null)) : v); });
+  });
+}
+const confirmBox=(title,html,okLbl="Evet",cls="d")=>ask({title,html:`<p class="muted" style="font-size:15px">${html}</p>`,buttons:[["Vazgeç","",false],[okLbl,cls,true]]});
+
+/* ---------------- yerel veritabanı (IndexedDB) ---------------- */
+const IDB = {
+  db:null,
+  open(){ return new Promise((res,rej)=>{ const r=indexedDB.open("termessos_saha",1);
+    r.onupgradeneeded=()=>{ const d=r.result; d.createObjectStore("records",{keyPath:"id"}); d.createObjectStore("blobs",{keyPath:"path"}); d.createObjectStore("meta"); };
+    r.onsuccess=()=>{this.db=r.result;res()}; r.onerror=()=>rej(r.error); }); },
+  _p(r){ return new Promise((res,rej)=>{ r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); },
+  all(s){ return this._p(this.db.transaction(s).objectStore(s).getAll()); },
+  get(s,k){ return this._p(this.db.transaction(s).objectStore(s).get(k)); },
+  put(s,v,k){ return this._p(this.db.transaction(s,"readwrite").objectStore(s).put(v,k)); },
+  putMany(s,arr){ return new Promise((res,rej)=>{ if(!arr.length) return res(); const t=this.db.transaction(s,"readwrite"); const o=t.objectStore(s); arr.forEach(v=>o.put(v)); t.oncomplete=()=>res(); t.onerror=()=>rej(t.error); }); }
+};
+
+/* ---------------- durum ---------------- */
+const R = new Map();           // tüm kayıtlar id -> kayıt
+let ME = null;                 // aktif kullanıcı adı
+let STAGE = null;              // aktif etap id
+let sb = null;                 // sunucu (Apps Script) bağlantısı
+const view = ls.get("view", {stages:"current", users:"all", feats:true});
+const SET = Object.assign({minDist:4, maxAcc:35, follow:true}, ls.get("settings",{}));
+const blobURLs = new Map();
+
+function recs(kind, stage){ const out=[]; for(const r of R.values()){ if(r.kind===kind && !r.deleted && (stage===undefined || r.stage_id===stage)) out.push(r); } return out; }
+function newRec(kind, data, stage_id=STAGE){ const t=nowISO(); return {id:uuid(), kind, stage_id, data, created_by:ME, created_at:t, updated_at:t, updated_by:ME, deleted:false, _dirty:1}; }
+async function saveRecs(list){
+  const t=nowISO();
+  for(const r of list){ if(!r._keepMeta){ r.updated_at=t; r.updated_by=ME; } delete r._keepMeta; r._dirty=1; R.set(r.id,r); }
+  await IDB.putMany("records", list);
+  scheduleRender(); scheduleSync();
+}
+const saveRec = r => saveRecs([r]);
+function patch(r, dataPatch){ return Object.assign({}, r, {data:Object.assign({}, r.data, dataPatch)}); }
+async function softDelete(list){ await saveRecs(list.map(r=>Object.assign({}, r, {deleted:true}))); }
+
+/* ---------------- senkronizasyon (Google Drive / Apps Script) ---------------- */
+let syncing=false, syncAgain=false, syncErr=null, lastSync=null;
+const scheduleSync = debounce(()=>sync(), 2500);
+function cfg(){ const c=ls.get("server",{}); return { url: CONFIG.SCRIPT_URL || c.url || "", key: c.key || "" }; }
+async function gas(op, payload={}, url, key){
+  const c=cfg(); url=url||c.url; key=key||c.key;
+  let r;
+  try{ r=await fetch(url,{method:"POST", redirect:"follow", headers:{"Content-Type":"text/plain;charset=utf-8"}, body:JSON.stringify(Object.assign({op, key}, payload))}); }
+  catch(e){ throw new Error("Sunucuya ulaşılamadı"); }
+  if(!r.ok) throw new Error("Sunucu yanıtı: "+r.status);
+  const txt=await r.text(); let j;
+  try{ j=JSON.parse(txt); }catch(e){ throw new Error("Web uygulaması JSON döndürmedi. Dağıtımda erişim “Herkes” olmalı."); }
+  if(!j.ok) throw new Error(j.error||"Sunucu hatası");
+  return j;
+}
+function initServer(){ const c=cfg(); sb = (c.url && c.key) ? {url:c.url} : null; updateStatus(); }
+const toRow = r => ({id:r.id, kind:r.kind, stage_id:r.stage_id, data:r.data, created_by:r.created_by, created_at:r.created_at, updated_at:r.updated_at, updated_by:r.updated_by, deleted:!!r.deleted});
+async function mergeRemote(rows){
+  const changed=[];
+  for(const row of rows){
+    const loc=R.get(row.id);
+    if(loc && loc._dirty && loc.updated_at >= row.updated_at) continue;
+    if(loc && !loc._dirty && loc.updated_at > row.updated_at) continue;
+    const rec={id:row.id, kind:row.kind, stage_id:row.stage_id||null, data:row.data||{}, created_by:row.created_by, created_at:row.created_at, updated_at:row.updated_at, updated_by:row.updated_by, deleted:!!row.deleted, _dirty:0};
+    R.set(rec.id, rec); changed.push(rec);
+  }
+  if(changed.length){ await IDB.putMany("records", changed); scheduleRender(); }
+}
+async function pull(){
+  let since = (await IDB.get("meta","lastSeq")) || 0;
+  for(let guard=0; guard<500; guard++){
+    const j = await gas("pull", {since, limit:2000});
+    if(!j.rows.length) break;
+    await mergeRemote(j.rows);
+    since = Math.max(since, ...j.rows.map(r=>r.seq||0)); await IDB.put("meta", since, "lastSeq");
+    if(!j.more) break;
+  }
+}
+const blobToB64 = b => new Promise((res,rej)=>{ const fr=new FileReader(); fr.onload=()=>res(String(fr.result).split(",")[1]); fr.onerror=()=>rej(fr.error); fr.readAsDataURL(b); });
+function photoFileName(path){
+  const p=[...R.values()].find(r=>r.kind==="photo" && r.data.path===path);
+  const f=p && R.get(p.data.feature_id); const st=f && R.get(f.stage_id);
+  const who=p? userOf(p.created_by).short : userOf(ME).short;
+  const t=new Date(p? p.created_at : Date.now()); const pad=n=>String(n).padStart(2,"0");
+  const stamp=`${t.getFullYear()}${pad(t.getMonth()+1)}${pad(t.getDate())}_${pad(t.getHours())}${pad(t.getMinutes())}${pad(t.getSeconds())}`;
+  return { folder: st? st.data.name : "Etapsız", name: `${(f? f.data.title : "foto").replace(/[\\/:*?"<>|]+/g,"-").slice(0,60)}_${who}_${stamp}.jpg` };
+}
+async function attachFileIds(){
+  const blobs=await IDB.all("blobs"); const byPath=new Map(blobs.filter(b=>b.file_id).map(b=>[b.path,b.file_id]));
+  const fix=[]; for(const r of R.values()){ if(r.kind==="photo" && !r.data.file_id && byPath.has(r.data.path)){ const n=patch(r,{file_id:byPath.get(r.data.path)}); n._keepMeta=r.created_by!==ME; fix.push(n); } }
+  if(fix.length){ const t=nowISO(); fix.forEach(r=>{ if(r._keepMeta){ r.updated_at=t; } }); await saveRecs(fix); }
+}
+async function sync(){
+  if(!sb){ updateStatus(); return; }
+  if(!navigator.onLine){ syncErr="Çevrimdışı"; updateStatus(); return; }
+  if(syncing){ syncAgain=true; return; }
+  syncing=true; updateStatus();
+  try{
+    // 1) bekleyen fotoğraflar -> Drive klasörü
+    const blobs=(await IDB.all("blobs")).filter(b=>!b.uploaded);
+    for(const b of blobs){
+      const meta=photoFileName(b.path);
+      const j=await gas("upload", {path:b.path, folder:meta.folder, name:meta.name, mime:"image/jpeg", b64:await blobToB64(b.blob)});
+      b.uploaded=1; b.file_id=j.id; await IDB.put("blobs", b);
+    }
+    await attachFileIds();
+    // 2) bekleyen kayıtlar -> tablo
+    const dirty=[...R.values()].filter(r=>r._dirty);
+    for(let i=0;i<dirty.length;i+=300){
+      const chunk=dirty.slice(i,i+300); const snap=chunk.map(r=>[r.id,r.updated_at]);
+      await gas("push", {rows:chunk.map(toRow)});
+      const done=[]; for(const [id,u] of snap){ const cur=R.get(id); if(cur && cur.updated_at===u){ cur._dirty=0; done.push(cur);} }
+      await IDB.putMany("records", done);
+    }
+    // 3) diğer cihazdan gelenler
+    await pull();
+    lastSync=Date.now(); syncErr=null;
+  }catch(e){ syncErr = (e && e.message) || String(e); console.warn("sync", e); }
+  syncing=false; updateStatus();
+  if(syncAgain){ syncAgain=false; setTimeout(sync, 400); }
+}
+async function pendingCount(){ let n=0; for(const r of R.values()) if(r._dirty) n++; const b=(await IDB.all("blobs")).filter(x=>!x.uploaded).length; return {n,b}; }
+async function updateStatus(){
+  const d=$("#syncDot"), t=$("#syncTxt"); if(!d) return;
+  const {n,b}=await pendingCount();
+  if(!sb){ d.style.background="#868e96"; t.textContent="Yerel"; return; }
+  if(syncing){ d.style.background="var(--warn)"; t.textContent="Eşitleniyor"; return; }
+  if(!navigator.onLine){ d.style.background="var(--warn)"; t.textContent=(n+b)? `Çevrimdışı · ${n+b}` : "Çevrimdışı"; return; }
+  if(syncErr){ d.style.background="var(--bad)"; t.textContent=(n+b)? `Hata · ${n+b}` : "Hata"; return; }
+  d.style.background = (n+b)? "var(--warn)" : "var(--ok)"; t.textContent = (n+b)? `${n+b} bekliyor` : "Eşit";
+}
+window.addEventListener("online", ()=>{ syncErr=null; sync(); });
+window.addEventListener("offline", updateStatus);
+setInterval(()=>{ if(sb && !document.hidden) sync(); }, 20000);
+document.addEventListener("visibilitychange", ()=>{ if(!document.hidden){ sync(); if(watchId!=null) requestWake(); } });
+
+/* ---------------- fotoğraflar ---------------- */
+function loadImg(file){ return new Promise((res,rej)=>{ const u=URL.createObjectURL(file); const im=new Image(); im.onload=()=>res([im,u]); im.onerror=()=>{URL.revokeObjectURL(u); rej(new Error("Görüntü okunamadı"))}; im.src=u; }); }
+function toJpeg(im, max, q){ const s=Math.min(1, max/Math.max(im.naturalWidth, im.naturalHeight)); const c=document.createElement("canvas"); c.width=Math.round(im.naturalWidth*s); c.height=Math.round(im.naturalHeight*s); c.getContext("2d").drawImage(im,0,0,c.width,c.height); return new Promise(r=>c.toBlob(b=>r([b,c.width,c.height]),"image/jpeg",q)); }
+async function addPhotos(featureId, files){
+  const f=R.get(featureId); const list=[];
+  for(const file of files){
+    try{
+      const [im,u]=await loadImg(file);
+      const [blob,w,h]=await toJpeg(im, 2560, 0.86); const [thumb]=await toJpeg(im, 480, 0.75); URL.revokeObjectURL(u);
+      const pid=uuid(); const path=`${f.stage_id||"genel"}/${featureId}/${pid}.jpg`;
+      await IDB.put("blobs", {path, blob, thumb, uploaded:0});
+      const pos=lastFix && (Date.now()-lastFix.t<120000) ? {lat:lastFix.lat,lng:lastFix.lng,acc:lastFix.acc} : {};
+      const r=newRec("photo", Object.assign({feature_id:featureId, path, w, h, taken:file.lastModified?new Date(file.lastModified).toISOString():null}, pos), f.stage_id); r.id=pid;
+      list.push(r);
+    }catch(e){ toast("Fotoğraf eklenemedi: "+e.message); }
+  }
+  if(list.length){ await saveRecs(list); toast(list.length+" fotoğraf eklendi"); }
+}
+function photoSrc(p, thumb){
+  const key=p.data.path+(thumb?"#t":"");
+  if(blobURLs.has(key)) return blobURLs.get(key);
+  return p.data.file_id ? `https://drive.google.com/thumbnail?id=${encodeURIComponent(p.data.file_id)}&sz=w${thumb?480:2000}` : "";
+}
+const driveLink = id => id ? `https://drive.google.com/file/d/${encodeURIComponent(id)}/view` : "";
+async function preloadLocalBlobs(){
+  for(const b of await IDB.all("blobs")){
+    if(!blobURLs.has(b.path)) blobURLs.set(b.path, URL.createObjectURL(b.blob));
+    if(b.thumb && !blobURLs.has(b.path+"#t")) blobURLs.set(b.path+"#t", URL.createObjectURL(b.thumb));
+  }
+}
+
+/* ---------------- harita ---------------- */
+let map, layerTracks, layerFeats, layerEdit, layerMates, meMarker, meCircle;
+function initMap(){
+  map = L.map("map", {zoomControl:false, attributionControl:true, tap:true}).setView(ls.get("mapView",{c:CONFIG.CENTER}).c, ls.get("mapView",{z:CONFIG.ZOOM}).z||CONFIG.ZOOM);
+  const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {maxNativeZoom:18, maxZoom:21, crossOrigin:true, attribution:"Uydu: Esri, Maxar, Earthstar Geographics"});
+  const topo = L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {subdomains:"abc", maxNativeZoom:17, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları, SRTM | OpenTopoMap (CC-BY-SA)"});
+  const osm = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {maxNativeZoom:19, maxZoom:21, crossOrigin:true, attribution:"© OpenStreetMap katkıcıları"});
+  const base = {"Uydu":sat, "Topoğrafik":topo, "Sokak":osm};
+  (base[ls.get("base","Uydu")]||sat).addTo(map);
+  L.control.layers(base, null, {position:"topright"}).addTo(map);
+  map.on("baselayerchange", e=>ls.set("base", e.name));
+  L.control.zoom({position:"topright"}).addTo(map);
+  L.control.scale({imperial:false, position:"bottomleft"}).addTo(map);
+  layerTracks=L.layerGroup().addTo(map); layerFeats=L.layerGroup().addTo(map); layerMates=L.layerGroup().addTo(map); layerEdit=L.layerGroup().addTo(map);
+  map.on("moveend", ()=>{ ls.set("mapView",{c:[map.getCenter().lat,map.getCenter().lng], z:map.getZoom()}); if(editTrack) renderEdit(); });
+  map.on("click", onMapClick);
+  map.on("dragstart", ()=>{ if(SET.follow){ SET.follow=false; ls.set("settings",SET); $("#followBtn").classList.remove("on"); } });
+}
+
+function trackPoints(trackId){ const pts=[]; for(const r of R.values()) if(r.kind==="point" && !r.deleted && r.data.track_id===trackId) pts.push(r); pts.sort((a,b)=>a.data.seq-b.data.seq); return pts; }
+function pointsByTrack(){ const m=new Map(); for(const r of R.values()){ if(r.kind!=="point"||r.deleted) continue; const k=r.data.track_id; if(!m.has(k)) m.set(k,[]); m.get(k).push(r); } for(const a of m.values()) a.sort((x,y)=>x.data.seq-y.data.seq); return m; }
+function trackStats(pts){ let len=0, up=0; for(let i=1;i<pts.length;i++){ len+=hav(pts[i-1].data, pts[i].data); const a=pts[i-1].data.alt, b=pts[i].data.alt; if(a!=null&&b!=null&&b>a) up+=b-a; } const t0=pts[0]?.data.t, t1=pts[pts.length-1]?.data.t; return {len, up, dur:(t0&&t1)? new Date(t1)-new Date(t0):0, n:pts.length}; }
+function visible(r){
+  if(view.users!=="all" && r.created_by!==view.users) return false;
+  if(view.stages==="current" && r.stage_id!==STAGE) return false;
+  return true;
+}
+const scheduleRender = (()=>{ let p=false; return ()=>{ if(p) return; p=true; setTimeout(()=>{ p=false; render(); }, 250); }; })();
+function render(){
+  if(!map) return;
+  renderHeader();
+  layerTracks.clearLayers(); layerFeats.clearLayers(); layerMates.clearLayers();
+  const pbt=pointsByTrack();
+  for(const t of recs("track")){
+    if(!visible(t)) continue;
+    const pts=pbt.get(t.id)||[]; if(!pts.length) continue;
+    const u=userOf(t.created_by); const cur=t.stage_id===STAGE; const editing=editTrack===t.id;
+    const ll=pts.map(p=>[p.data.lat,p.data.lng]);
+    L.polyline(ll,{color:"#fff", weight:editing?9:7, opacity:cur?.85:.45}).addTo(layerTracks);
+    const line=L.polyline(ll,{color:u.color, weight:editing?5:4, opacity:cur?1:.55, dashArray:t.data.mode==="manual"?"8 7":null}).addTo(layerTracks);
+    line.on("click", e=>{ L.DomEvent.stop(e); if(editTrack||pickCb) return onMapClick(e); trackPopup(t, e.latlng); });
+    if(pts.length>1) L.circleMarker(ll[0],{radius:5, color:"#fff", weight:2, fillColor:u.color, fillOpacity:1}).addTo(layerTracks);
+    // anlık konum: kaydı süren rota
+    if(!t.data.ended_at && t.created_by!==ME){
+      const last=pts[pts.length-1]; const age=Date.now()-new Date(last.data.t||last.updated_at);
+      if(age<15*60000) L.marker(ll[ll.length-1],{icon:L.divIcon({className:"",html:`<span class="mate" style="background:${u.color}">${esc(u.short)} · ${Math.max(0,Math.round(age/60000))} dk</span>`,iconSize:[0,0]}), interactive:false}).addTo(layerMates);
+    }
+  }
+  if(view.feats){
+    for(const f of recs("feature")){
+      if(!visible(f)) continue; const u=userOf(f.created_by); const c=CAT[f.data.category]||CAT.diger;
+      const mk=L.marker([f.data.lat,f.data.lng],{icon:L.divIcon({className:"",html:`<div class="fm" style="background:${u.color};opacity:${f.stage_id===STAGE?1:.65}"><span>${c.icon}</span></div>`,iconSize:[34,34],iconAnchor:[4,34]})}).addTo(layerFeats);
+      mk.on("click", e=>{ if(editTrack||pickCb) return onMapClick({latlng:e.latlng}); openFeature(f.id); });
+    }
+  }
+  if(editTrack) renderEdit();
+  updateRecBanner(); updateStatus();
+}
+function trackPopup(t, at){
+  const s=trackStats(trackPoints(t.id)); const st=R.get(t.stage_id);
+  const html=`<b>${esc(t.data.name)}</b><br>${byTag(t.created_by,t.created_at)}<br><span class="muted">${esc(st?.data.name||"")} · ${fmtLen(s.len)} · ${s.n} nokta${t.data.mode==="manual"?" · elle çizildi":""}</span><div class="row"><button class="btn s" id="pp1">Ayrıntı</button><button class="btn s p" id="pp2">Düzenle</button></div>`;
+  const p=L.popup().setLatLng(at).setContent(html).openOn(map);
+  setTimeout(()=>{ const a=$("#pp1"), b=$("#pp2"); if(a) a.onclick=()=>{map.closePopup(); openTrack(t.id)}; if(b) b.onclick=()=>{map.closePopup(); startEdit(t.id)}; },0);
+}
+function renderHeader(){
+  const st=R.get(STAGE); const u=userOf(ME);
+  $("#stageName").textContent = st? st.data.name : "Etap seçilmedi";
+  const nT=recs("track",STAGE).length, nF=recs("feature",STAGE).length;
+  $("#stageSub").textContent = `${nT} rota · ${nF} nokta` + (view.stages==="all"?" · tüm etaplar görünür":"") + (view.users!=="all"?" · yalnız "+view.users.split(" ")[0]:"");
+  $("#meAv").textContent=u.short; $("#meAv").style.background=u.color;
+}
+
+/* ---------------- konum ve rota kaydı ---------------- */
+let watchId=null, lastFix=null, recTrack=ls.get("recTrack",null), lastRecPt=null, wakeLock=null, gpsErr=null;
+function startWatch(){
+  if(!("geolocation" in navigator)){ gpsErr="Bu cihazda konum yok"; return; }
+  if(watchId!=null) return;
+  watchId=navigator.geolocation.watchPosition(onPos, e=>{ gpsErr=e.message||"Konum alınamadı"; updateRecBanner(); if(e.code===1) toast("Konum izni verilmedi. Tarayıcı ayarlarından izin verin.",5000); }, {enableHighAccuracy:true, maximumAge:0, timeout:30000});
+}
+function onPos(p){
+  gpsErr=null;
+  const c=p.coords; lastFix={lat:c.latitude, lng:c.longitude, acc:c.accuracy, alt:c.altitude, t:p.timestamp||Date.now()};
+  const ll=[c.latitude,c.longitude];
+  if(!meMarker){ meCircle=L.circle(ll,{radius:c.accuracy, color:"#1c7ed6", weight:1, fillOpacity:.12, interactive:false}).addTo(map); meMarker=L.marker(ll,{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[18,18]}), interactive:false, zIndexOffset:1000}).addTo(map); }
+  else { meMarker.setLatLng(ll); meCircle.setLatLng(ll).setRadius(c.accuracy); }
+  if(SET.follow && !editTrack && !pickCb) map.panTo(ll, {animate:true});
+  if(recTrack) recordFix(lastFix);
+  updateRecBanner();
+}
+async function recordFix(f){
+  const t=R.get(recTrack); if(!t || t.deleted){ stopRec(true); return; }
+  if(f.acc>SET.maxAcc) return;
+  if(lastRecPt){ const d=hav(lastRecPt, f); if(d<SET.minDist && (f.t-lastRecPt.t)<60000) return; if(d<Math.max(1.5, f.acc*0.15)) return; }
+  lastRecPt={lat:f.lat,lng:f.lng,t:f.t};
+  const r=newRec("point",{track_id:t.id, seq:f.t, lat:+f.lat.toFixed(7), lng:+f.lng.toFixed(7), alt:f.alt!=null?Math.round(f.alt*10)/10:null, acc:Math.round(f.acc), t:new Date(f.t).toISOString()}, t.stage_id);
+  await saveRec(r);
+}
+async function requestWake(){ try{ if("wakeLock" in navigator){ wakeLock=await navigator.wakeLock.request("screen"); } }catch(e){} }
+async function startRec(continueId){
+  if(!STAGE){ toast("Önce bir etap seçin"); return; }
+  startWatch();
+  let t;
+  if(continueId){ t=R.get(continueId); t=patch(t,{ended_at:null}); await saveRec(t); const pts=trackPoints(t.id); const l=pts[pts.length-1]; lastRecPt=l?{lat:l.data.lat,lng:l.data.lng,t:Date.now()}:null; }
+  else {
+    const n=recs("track",STAGE).filter(x=>x.created_by===ME).length+1;
+    t=newRec("track",{name:`${userOf(ME).short} rota ${n} – ${new Date().toLocaleTimeString("tr-TR",{hour:"2-digit",minute:"2-digit"})}`, mode:"gps", started_at:nowISO(), ended_at:null});
+    await saveRec(t); lastRecPt=null;
+  }
+  recTrack=t.id; ls.set("recTrack",recTrack); SET.follow=true; $("#followBtn").classList.add("on");
+  requestWake(); updateRecBanner();
+  if(lastFix && Date.now()-lastFix.t<15000) recordFix(lastFix);
+  toast("Rota kaydı başladı. Ekranı açık tutun.");
+}
+async function stopRec(silent){
+  const t=R.get(recTrack);
+  recTrack=null; ls.set("recTrack",null); lastRecPt=null;
+  try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock=null;
+  if(t && !t.deleted){ await saveRec(patch(t,{ended_at:nowISO()})); if(!silent){ const s=trackStats(trackPoints(t.id)); toast(`Kayıt bitti: ${fmtLen(s.len)}, ${s.n} nokta`); } }
+  updateRecBanner(); sync();
+}
+function updateRecBanner(){
+  const b=$("#recBanner"), btn=$("#recBtn");
+  if(recTrack && R.get(recTrack)){
+    const pts=trackPoints(recTrack); const s=trackStats(pts);
+    b.classList.toggle("hidden", !!editTrack || !!pickCb);
+    const acc = lastFix? `±${Math.round(lastFix.acc)} m` : "konum bekleniyor";
+    $("#recTxt").innerHTML = `<b>Kaydediliyor</b> · ${fmtLen(s.len)} · ${s.n} nokta · GPS ${acc}${gpsErr?" · ⚠ "+esc(gpsErr):""}`;
+    btn.classList.add("rec"); $("#recLbl").textContent="Kaydı bitir"; btn.querySelector(".i").textContent="⏹";
+  } else { b.classList.add("hidden"); btn.classList.remove("rec"); $("#recLbl").textContent="Rota kaydı"; btn.querySelector(".i").textContent="⏺"; }
+}
+
+/* ---------------- rota düzenleme ---------------- */
+let editTrack=null, editUndo=[];
+function startEdit(trackId){
+  closeSheet(); editTrack=trackId; editUndo=[]; SET.follow=false; $("#followBtn").classList.remove("on");
+  const pts=trackPoints(trackId); if(pts.length) map.fitBounds(L.latLngBounds(pts.map(p=>[p.data.lat,p.data.lng])).pad(0.2), {maxZoom:18});
+  drawEditBanner(); render();
+}
+function drawEditBanner(){
+  const t=R.get(editTrack); const b=$("#editBanner");
+  if(!t){ b.classList.add("hidden"); return; }
+  const s=trackStats(trackPoints(editTrack));
+  b.innerHTML=`<b>Rota düzenleniyor:</b> ${esc(t.data.name)} <span style="opacity:.8">(${fmtLen(s.len)}, ${s.n} nokta)</span>
+  <div style="font-size:12.5px;opacity:.9;margin-top:4px">Haritaya dokun → sona nokta ekle · Noktayı sürükle → taşı · Noktaya dokun → sil · Kesikli halkayı sürükle → araya ekle</div>
+  <div class="row"><button id="eUndo">↶ Geri al</button><button id="eRev">⇄ Yönü çevir</button><button id="eSimp">Sadeleştir</button><button class="primary" id="eDone">Bitti</button></div>`;
+  b.classList.remove("hidden"); $("#recBanner").classList.add("hidden");
+  $("#eDone").onclick=endEdit; $("#eUndo").onclick=undoEdit; $("#eSimp").onclick=simplifyTrack; $("#eRev").onclick=reverseTrack;
+}
+function endEdit(){ editTrack=null; layerEdit.clearLayers(); $("#editBanner").classList.add("hidden"); render(); sync(); }
+async function editSave(list, undo){ editUndo.push(undo); await saveRecs(list); drawEditBanner(); }
+async function undoEdit(){ const u=editUndo.pop(); if(!u){ toast("Geri alınacak işlem yok"); return; } await saveRecs(u.map(r=>Object.assign({},r))); drawEditBanner(); }
+function renderEdit(){
+  layerEdit.clearLayers(); if(!editTrack) return;
+  const pts=trackPoints(editTrack); const b=map.getBounds().pad(0.1);
+  const inView=pts.map((p,i)=>[p,i]).filter(([p])=>b.contains([p.data.lat,p.data.lng]));
+  if(inView.length>350){ L.marker(map.getCenter(),{icon:L.divIcon({className:"",html:'<div style="background:#fff;padding:6px 10px;border-radius:8px;transform:translate(-50%,-50%);white-space:nowrap;font-size:13px;box-shadow:0 1px 4px rgba(0,0,0,.3)">Noktaları düzenlemek için yakınlaştırın</div>',iconSize:[0,0]}), interactive:false}).addTo(layerEdit); return; }
+  for(const [p,i] of inView){
+    const end = i===0||i===pts.length-1;
+    const m=L.marker([p.data.lat,p.data.lng],{draggable:true, icon:L.divIcon({className:"",html:`<div class="vx ${end?"end":""}"></div>`,iconSize:[18,18]}), zIndexOffset:500}).addTo(layerEdit);
+    m.on("dragend", async ()=>{ const ll=m.getLatLng(); const before=Object.assign({},p); await editSave([patch(p,{lat:+ll.lat.toFixed(7), lng:+ll.lng.toFixed(7), moved:true})],[before]); });
+    m.on("click", ()=>{
+      const pop=L.popup({offset:[0,-6]}).setLatLng(m.getLatLng()).setContent(`<div class="muted">${i+1}. nokta${p.data.t?" · "+fmtDT(p.data.t):""}${p.data.acc?" · ±"+p.data.acc+" m":""}</div><div class="row"><button class="btn s d" id="vDel">Noktayı sil</button>${i>0&&i<pts.length-1?'<button class="btn s" id="vSplit">Buradan böl</button>':""}</div>`).openOn(map);
+      setTimeout(()=>{ const d=$("#vDel"); if(d) d.onclick=async()=>{ map.closePopup(); const before=Object.assign({},p); await editSave([Object.assign({},p,{deleted:true})],[before]); };
+        const sp=$("#vSplit"); if(sp) sp.onclick=()=>{ map.closePopup(); splitTrack(i); }; },0);
+    });
+  }
+  for(let k=0;k<inView.length;k++){
+    const [p,i]=inView[k]; const n=pts[i+1]; if(!n) continue;
+    const mid=[(p.data.lat+n.data.lat)/2,(p.data.lng+n.data.lng)/2];
+    const mm=L.marker(mid,{draggable:true, icon:L.divIcon({className:"",html:'<div class="vmid"></div>',iconSize:[14,14]})}).addTo(layerEdit);
+    const ins=async ll=>{ const r=newRec("point",{track_id:editTrack, seq:(p.data.seq+n.data.seq)/2, lat:+ll.lat.toFixed(7), lng:+ll.lng.toFixed(7), alt:null, acc:null, t:null, manual:true}, R.get(editTrack).stage_id); await editSave([r],[Object.assign({},r,{deleted:true})]); };
+    mm.on("dragend", ()=>ins(mm.getLatLng())); mm.on("click", ()=>ins(mm.getLatLng()));
+  }
+}
+async function appendEditPoint(ll){
+  const pts=trackPoints(editTrack); const last=pts[pts.length-1]; const t=R.get(editTrack);
+  const r=newRec("point",{track_id:editTrack, seq:last? last.data.seq+1000 : Date.now(), lat:+ll.lat.toFixed(7), lng:+ll.lng.toFixed(7), alt:null, acc:null, t:null, manual:true}, t.stage_id);
+  await editSave([r],[Object.assign({},r,{deleted:true})]);
+}
+async function reverseTrack(){
+  const pts=trackPoints(editTrack); if(pts.length<2) return;
+  const seqs=pts.map(p=>p.data.seq).reverse();
+  await editSave(pts.map((p,i)=>patch(p,{seq:seqs[i]})), pts.map(p=>Object.assign({},p)));
+  toast("Rota yönü çevrildi");
+}
+async function simplifyTrack(){
+  const pts=trackPoints(editTrack); if(pts.length<3) return;
+  const v=await ask({title:"Rotayı sadeleştir", html:`<p class="muted">GPS titremesinden kaynaklanan gereksiz noktaları siler. Rotadan sapma payı (metre):</p>`, input:{value:"3"}, buttons:[["Vazgeç","",false],["Sadeleştir","p",true]]});
+  if(!v) return; const tol=Math.max(0.5, parseFloat(v.replace(",","."))||3);
+  const keep=new Array(pts.length).fill(false); keep[0]=keep[pts.length-1]=true;
+  const xy=pts.map(p=>{ const k=111320; return [p.data.lng*k*Math.cos(p.data.lat*Math.PI/180), p.data.lat*110540]; });
+  const dps=(a,b)=>{ let mx=0, idx=-1; const [x1,y1]=xy[a],[x2,y2]=xy[b]; const L2=(x2-x1)**2+(y2-y1)**2;
+    for(let i=a+1;i<b;i++){ const [x,y]=xy[i]; let t=L2? ((x-x1)*(x2-x1)+(y-y1)*(y2-y1))/L2 : 0; t=Math.max(0,Math.min(1,t)); const d=Math.hypot(x-(x1+t*(x2-x1)), y-(y1+t*(y2-y1))); if(d>mx){mx=d;idx=i;} }
+    if(mx>tol){ keep[idx]=true; dps(a,idx); dps(idx,b); } };
+  dps(0,pts.length-1);
+  const del=pts.filter((p,i)=>!keep[i]);
+  if(!del.length){ toast("Silinecek nokta yok"); return; }
+  await editSave(del.map(p=>Object.assign({},p,{deleted:true})), del.map(p=>Object.assign({},p)));
+  toast(`${del.length} nokta silindi`);
+}
+async function splitTrack(i){
+  const t=R.get(editTrack); const pts=trackPoints(editTrack);
+  const ok=await confirmBox("Rotayı böl", `Rota ${i+1}. noktadan ikiye bölünecek. İkinci parça yeni bir rota olur.`, "Böl", "p"); if(!ok) return;
+  const nt=newRec("track",{name:t.data.name+" (2)", mode:t.data.mode, started_at:pts[i].data.t||nowISO(), ended_at:t.data.ended_at}, t.stage_id);
+  const moved=pts.slice(i).map(p=>patch(p,{track_id:nt.id}));
+  const copy=Object.assign({}, newRec("point", Object.assign({}, pts[i].data, {track_id:t.id}), t.stage_id));
+  await saveRecs([nt, ...moved, copy]); editUndo=[]; drawEditBanner(); toast("Rota bölündü");
+}
+
+/* ---------------- harita tıklama / konum seçme ---------------- */
+let pickCb=null;
+function onMapClick(e){
+  if(pickCb){ const cb=pickCb; endPick(); cb(e.latlng); return; }
+  if(editTrack){ appendEditPoint(e.latlng); return; }
+}
+function startPick(msg, cb){
+  pickCb=cb; SET.follow=false; $("#followBtn").classList.remove("on"); closeSheet();
+  const b=$("#pickBanner"); b.innerHTML=`<b>${esc(msg)}</b><div class="row">${lastFix?'<button id="pkGps">Mevcut konumum</button>':""}<button id="pkCenter">Ekran ortası</button><button id="pkCancel">Vazgeç</button></div>`;
+  b.classList.remove("hidden"); $("#recBanner").classList.add("hidden");
+  $("#pkCancel").onclick=()=>{ endPick(); };
+  $("#pkCenter").onclick=()=>{ const c=pickCb; endPick(); c(map.getCenter()); };
+  const g=$("#pkGps"); if(g) g.onclick=()=>{ const c=pickCb; endPick(); c(L.latLng(lastFix.lat,lastFix.lng), lastFix); };
+}
+function endPick(){ pickCb=null; $("#pickBanner").classList.add("hidden"); updateRecBanner(); }
+
+/* ---------------- sayfa (sheet) ---------------- */
+let sheetOnClose=null;
+function openSheet(title, html, onMount, onClose){
+  $("#shTitle").textContent=title; $("#shBody").innerHTML=html; $("#shBody").scrollTop=0;
+  $("#sheet").classList.remove("hidden"); $("#scrim").classList.remove("hidden");
+  sheetOnClose=onClose||null; if(onMount) onMount($("#shBody"));
+}
+function closeSheet(){ $("#sheet").classList.add("hidden"); $("#scrim").classList.add("hidden"); const f=sheetOnClose; sheetOnClose=null; if(f) f(); }
+$("#shClose").onclick=closeSheet; $("#scrim").onclick=closeSheet;
+
+/* ---------------- nokta (unsur) kaydı ---------------- */
+async function newFeatureFlow(){
+  if(!STAGE){ toast("Önce bir etap seçin"); return; }
+  startWatch();
+  const draft={category:"yapi", title:"", body:"", lat:null, lng:null, acc:null, alt:null, files:[]};
+  if(lastFix && Date.now()-lastFix.t<60000){ Object.assign(draft,{lat:lastFix.lat,lng:lastFix.lng,acc:lastFix.acc,alt:lastFix.alt}); }
+  featureForm(draft);
+}
+function featureForm(d, existing){
+  const locTxt = d.lat!=null ? `${d.lat.toFixed(6)}, ${d.lng.toFixed(6)}${d.acc?` <span class="muted">(±${Math.round(d.acc)} m)</span>`:""}` : `<span style="color:var(--bad)">Konum yok</span>`;
+  openSheet(existing?"Noktayı düzenle":"Yeni nokta", `
+    <label class="f">Konum</label>
+    <div class="card" style="margin:0"><div>${locTxt}</div><div class="row" style="margin-top:8px"><button class="btn s" id="fGps">📡 GPS'ten al</button><button class="btn s" id="fPick">🗺 Haritadan seç</button></div></div>
+    <label class="f">Unsur türü</label>
+    <div class="cats">${CATS.map(c=>`<button data-c="${c[0]}" class="${d.category===c[0]?"on":""}"><span>${c[2]}</span>${c[1]}</button>`).join("")}</div>
+    <label class="f">Başlık</label><input class="in" id="fTitle" value="${esc(d.title)}" placeholder="ör. Kuzey sur duvarı, doğu köşe">
+    ${existing?"":`<label class="f">Not</label><textarea class="in" id="fBody" placeholder="Gözlemler, ölçüler, durum…">${esc(d.body)}</textarea>
+    <label class="f">Fotoğraflar <span id="fCnt">${d.files.length? "("+d.files.length+")":""}</span></label>
+    <div class="row"><button class="btn" id="fCam">📷 Fotoğraf çek</button><button class="btn" id="fLib">🖼 Galeriden</button></div>
+    <div class="photos" id="fPrev" style="margin-top:8px"></div>`}
+    <div style="height:14px"></div>
+    <button class="btn p w" id="fSave">${existing?"Değişiklikleri kaydet":"Kaydet"}</button>
+  `, body=>{
+    const sync=()=>{ d.title=$("#fTitle").value; const fb=$("#fBody"); if(fb) d.body=fb.value; };
+    body.querySelectorAll(".cats button").forEach(b=>b.onclick=()=>{ d.category=b.dataset.c; body.querySelectorAll(".cats button").forEach(x=>x.classList.toggle("on",x===b)); });
+    $("#fGps").onclick=()=>{ sync(); if(!lastFix){ startWatch(); toast("Konum bekleniyor…"); return; } Object.assign(d,{lat:lastFix.lat,lng:lastFix.lng,acc:lastFix.acc,alt:lastFix.alt}); featureForm(d, existing); };
+    $("#fPick").onclick=()=>{ sync(); startPick("Noktanın yerine haritada dokunun", (ll,fix)=>{ Object.assign(d,{lat:ll.lat,lng:ll.lng,acc:fix?fix.acc:null,alt:fix?fix.alt:null}); featureForm(d, existing); }); };
+    if(!existing){
+      const prev=()=>{ $("#fPrev").innerHTML=d.files.map((f,i)=>`<div class="ph"><img src="${f._u||(f._u=URL.createObjectURL(f))}"><button class="pend" data-i="${i}" style="border:none">✕</button></div>`).join(""); $("#fCnt").textContent=d.files.length?"("+d.files.length+")":""; $("#fPrev").querySelectorAll("button").forEach(b=>b.onclick=()=>{d.files.splice(+b.dataset.i,1); prev();}); };
+      prev();
+      $("#fCam").onclick=()=>{ sync(); pickFiles("#fileCam", fs=>{ d.files.push(...fs); prev(); }); };
+      $("#fLib").onclick=()=>{ sync(); pickFiles("#fileLib", fs=>{ d.files.push(...fs); prev(); }); };
+    }
+    $("#fSave").onclick=async()=>{
+      sync();
+      if(d.lat==null){ toast("Konum gerekli: GPS'ten alın ya da haritadan seçin"); return; }
+      if(!d.title.trim()) d.title = (CAT[d.category]||CAT.diger).name;
+      const btn=$("#fSave"); btn.disabled=true; btn.textContent="Kaydediliyor…";
+      if(existing){
+        const r=patch(existing,{category:d.category, title:d.title.trim(), lat:d.lat, lng:d.lng, acc:d.acc});
+        await saveRec(r); openFeature(r.id); toast("Güncellendi");
+      } else {
+        const f=newRec("feature",{category:d.category, title:d.title.trim(), lat:+d.lat.toFixed(7), lng:+d.lng.toFixed(7), acc:d.acc!=null?Math.round(d.acc):null, alt:d.alt!=null?Math.round(d.alt):null, track_id:recTrack||null});
+        const list=[f];
+        if(d.body.trim()) list.push(newRec("entry",{feature_id:f.id, text:d.body.trim()}));
+        await saveRecs(list);
+        if(d.files.length){ await addPhotos(f.id, d.files); await preloadLocalBlobs(); }
+        d.files.forEach(x=>x._u&&URL.revokeObjectURL(x._u));
+        openFeature(f.id); toast("Nokta kaydedildi");
+      }
+    };
+  });
+}
+function pickFiles(sel, cb){ const inp=$(sel); inp.value=""; inp.onchange=()=>{ const fs=[...inp.files]; if(fs.length) cb(fs); }; inp.click(); }
+
+function openFeature(id){
+  const f=R.get(id); if(!f || f.deleted){ closeSheet(); return; }
+  const c=CAT[f.data.category]||CAT.diger; const st=R.get(f.stage_id);
+  const entries=[...R.values()].filter(r=>r.kind==="entry"&&!r.deleted&&r.data.feature_id===id).sort((a,b)=>a.created_at<b.created_at?-1:1);
+  const photos=[...R.values()].filter(r=>r.kind==="photo"&&!r.deleted&&r.data.feature_id===id).sort((a,b)=>a.created_at<b.created_at?-1:1);
+  openSheet(`${c.icon} ${f.data.title}`, `
+    <div class="row" style="justify-content:space-between"><div>${byTag(f.created_by, f.created_at)}</div><span class="muted">${esc(c.name)}</span></div>
+    ${f.updated_by && (f.updated_by!==f.created_by || f.updated_at!==f.created_at) ? `<div class="muted" style="margin-top:4px">Son düzenleyen: ${byTag(f.updated_by, f.updated_at)}</div>`:""}
+    <div class="kv" style="margin-top:10px"><span>Etap</span><span>${esc(st?.data.name||"—")}</span><span>Konum</span><span>${f.data.lat.toFixed(6)}, ${f.data.lng.toFixed(6)}${f.data.acc?` (±${f.data.acc} m)`:""}${f.data.alt!=null?` · ${f.data.alt} m rakım`:""}</span></div>
+    <h3>Fotoğraflar (${photos.length})</h3>
+    <div class="photos">${photos.map(p=>`<button class="ph" data-p="${p.id}"><img loading="lazy" src="${esc(photoSrc(p,true))}" onerror="this.style.opacity=.2"><span class="cap">${esc(userOf(p.created_by).short)} · ${fmtDT(p.created_at)}</span>${p._dirty?'<span class="pend">bekliyor</span>':""}</button>`).join("") || '<span class="muted">Henüz fotoğraf yok.</span>'}</div>
+    <div class="row" style="margin-top:8px"><button class="btn s" id="oCam">📷 Fotoğraf çek</button><button class="btn s" id="oLib">🖼 Galeriden ekle</button></div>
+    <h3>Notlar (${entries.length})</h3>
+    ${entries.map(e=>`<div class="entry" style="border-color:${userOf(e.created_by).color}">${byTag(e.created_by,e.created_at)}${e.updated_at!==e.created_at?` <span class="muted">(düzenlendi)</span>`:""}${e.created_by===ME?` <button class="btn s" data-e="${e.id}" style="padding:2px 8px;margin-left:4px">düzenle</button>`:""}<p>${esc(e.data.text)}</p></div>`).join("") || '<p class="muted">Henüz not yok.</p>'}
+    <textarea class="in" id="oNote" placeholder="${esc(userOf(ME).name)} olarak not ekle…" style="min-height:70px;margin-top:6px"></textarea>
+    <button class="btn a w" id="oAdd" style="margin-top:8px">Notu ekle</button>
+    <h3>İşlemler</h3>
+    <div class="row"><button class="btn s" id="oGo">🎯 Haritada göster</button><button class="btn s" id="oEdit">✏️ Tür / başlık / konum</button><button class="btn s d" id="oDel">Sil</button></div>
+  `, ()=>{
+    document.querySelectorAll("#shBody .ph[data-p]").forEach(b=>b.onclick=()=>viewPhoto(b.dataset.p, photos.map(p=>p.id)));
+    $("#oCam").onclick=()=>pickFiles("#fileCam", async fs=>{ await addPhotos(id, fs); await preloadLocalBlobs(); openFeature(id); });
+    $("#oLib").onclick=()=>pickFiles("#fileLib", async fs=>{ await addPhotos(id, fs); await preloadLocalBlobs(); openFeature(id); });
+    $("#oAdd").onclick=async()=>{ const t=$("#oNote").value.trim(); if(!t) return; await saveRec(newRec("entry",{feature_id:id, text:t}, f.stage_id)); openFeature(id); };
+    document.querySelectorAll("#shBody [data-e]").forEach(b=>b.onclick=async()=>{ const e=R.get(b.dataset.e);
+      const v=await ask({title:"Notu düzenle", html:`<textarea class="in" id="eTxt" style="min-height:120px">${esc(e.data.text)}</textarea>`, buttons:[["Sil","d","del"],["Vazgeç","",false],["Kaydet","p",true]]});
+      if(v==="del"){ if(await confirmBox("Notu sil","Bu not silinecek.","Sil")) await softDelete([e]); }
+      else if(v===true){ const t=document.getElementById("eTxt").value.trim(); if(t && t!==e.data.text) await saveRec(patch(e,{text:t})); }
+      openFeature(id); });
+    $("#oGo").onclick=()=>{ closeSheet(); SET.follow=false; $("#followBtn").classList.remove("on"); map.setView([f.data.lat,f.data.lng], Math.max(map.getZoom(),18)); };
+    $("#oEdit").onclick=()=>featureForm({category:f.data.category, title:f.data.title, lat:f.data.lat, lng:f.data.lng, acc:f.data.acc, files:[]}, f);
+    $("#oDel").onclick=async()=>{ if(await confirmBox("Noktayı sil", `“${esc(f.data.title)}” ve bağlı ${entries.length} not, ${photos.length} fotoğraf silinecek. Bu silme iki kullanıcıya da yansır.`, "Sil")){ await softDelete([f,...entries,...photos]); closeSheet(); toast("Silindi"); } };
+  });
+}
+
+function viewPhoto(pid, ids){
+  const p=R.get(pid); const v=$("#viewer"); const i=ids.indexOf(pid);
+  v.innerHTML=`<div class="vt"><button class="x" id="vClose" style="background:#333;color:#fff">✕</button></div><img src="${esc(photoSrc(p,false))}" onerror="this.src='${esc(photoSrc(p,true))}'"><div class="vb"><span style="flex:1">${byTag(p.created_by,p.created_at).replace('class="by"','class="by" style="color:#ddd"')}${p.data.lat?` · ${p.data.lat.toFixed(5)}, ${p.data.lng.toFixed(5)}`:""}</span>${p.data.file_id?`<a class="btn s" href="${driveLink(p.data.file_id)}" target="_blank" rel="noopener" style="text-decoration:none">Drive</a>`:""}${i>0?'<button class="btn s" id="vPrev">‹</button>':""}${i<ids.length-1?'<button class="btn s" id="vNext">›</button>':""}${p.created_by===ME?'<button class="btn s d" id="vDel">Sil</button>':""}</div>`;
+  v.classList.remove("hidden");
+  $("#vClose").onclick=()=>v.classList.add("hidden");
+  const pr=$("#vPrev"), nx=$("#vNext"), dl=$("#vDel");
+  if(pr) pr.onclick=()=>viewPhoto(ids[i-1],ids); if(nx) nx.onclick=()=>viewPhoto(ids[i+1],ids);
+  if(dl) dl.onclick=async()=>{ if(await confirmBox("Fotoğrafı sil","Bu fotoğraf iki kullanıcının listesinden de kaldırılacak.","Sil")){ await softDelete([p]); v.classList.add("hidden"); openFeature(p.data.feature_id); } };
+}
+
+/* ---------------- rota ayrıntısı ---------------- */
+function openTrack(id){
+  const t=R.get(id); if(!t||t.deleted){ closeSheet(); return; }
+  const pts=trackPoints(id); const s=trackStats(pts); const st=R.get(t.stage_id);
+  const feats=recs("feature").filter(f=>f.data.track_id===id);
+  const editors=[...new Set(pts.filter(p=>p.updated_by && p.updated_by!==t.created_by).map(p=>p.updated_by))];
+  openSheet(t.data.name, `
+    <div>${byTag(t.created_by, t.created_at)} <span class="muted">· ${t.data.mode==="manual"?"elle çizildi":"GPS ile kaydedildi"}</span></div>
+    ${editors.length?`<div class="muted" style="margin-top:4px">Düzenleyenler: ${editors.map(e=>byTag(e)).join(" ")}</div>`:""}
+    <div class="stat"><div><b>${fmtLen(s.len)}</b><small>uzunluk</small></div><div><b>${s.n}</b><small>nokta</small></div><div><b>${s.dur?fmtDur(s.dur):"—"}</b><small>süre</small></div></div>
+    <div class="kv"><span>Etap</span><span>${esc(st?.data.name||"—")}</span><span>Başlangıç</span><span>${fmtDT(t.data.started_at||t.created_at)}</span><span>Bitiş</span><span>${t.data.ended_at?fmtDT(t.data.ended_at):(recTrack===id?"kayıt sürüyor":"—")}</span>${s.up?`<span>Tırmanış</span><span>${Math.round(s.up)} m</span>`:""}<span>Bağlı nokta</span><span>${feats.length}</span></div>
+    <h3>İşlemler</h3>
+    <div class="row">
+      <button class="btn s" id="tGo">🎯 Haritada göster</button>
+      <button class="btn s p" id="tEdit">✏️ Rotayı düzenle</button>
+      <button class="btn s" id="tRen">Yeniden adlandır</button>
+      ${t.created_by===ME && recTrack!==id && t.data.mode!=="manual"?'<button class="btn s" id="tCont">⏺ Kayda devam et</button>':""}
+      <button class="btn s" id="tGpx">GPX indir</button>
+      <button class="btn s d" id="tDel">Sil</button>
+    </div>`, ()=>{
+    $("#tGo").onclick=()=>{ closeSheet(); SET.follow=false; $("#followBtn").classList.remove("on"); if(pts.length) map.fitBounds(L.latLngBounds(pts.map(p=>[p.data.lat,p.data.lng])).pad(0.15)); };
+    $("#tEdit").onclick=()=>{ if(recTrack===id){ toast("Önce kaydı bitirin"); return; } startEdit(id); };
+    $("#tRen").onclick=async()=>{ const v=await ask({title:"Rota adı", input:{value:t.data.name}, buttons:[["Vazgeç","",false],["Kaydet","p",true]]}); if(v){ await saveRec(patch(t,{name:v})); openTrack(id); } };
+    const c=$("#tCont"); if(c) c.onclick=()=>{ if(recTrack){ toast("Zaten kayıt yapılıyor"); return; } closeSheet(); startRec(id); };
+    $("#tGpx").onclick=()=>download(`${slug(t.data.name)}.gpx`, gpx([t], []), "application/gpx+xml");
+    $("#tDel").onclick=async()=>{ if(await confirmBox("Rotayı sil", `“${esc(t.data.name)}” (${s.n} nokta) silinecek. Bağlı notlar kalır.`, "Sil")){ if(recTrack===id) await stopRec(true); await softDelete([t,...pts]); closeSheet(); toast("Rota silindi"); } };
+  });
+}
+
+/* ---------------- kayıtlar listesi ---------------- */
+let listTab="rotalar", listQ="";
+function openLists(){
+  const tab=listTab;
+  const scopeStages = view.stages==="current" ? [STAGE] : recs("stage").map(s=>s.id);
+  const pbt=pointsByTrack();
+  let body="";
+  if(tab==="rotalar"){
+    const ts=recs("track").filter(t=>scopeStages.includes(t.stage_id) && (view.users==="all"||t.created_by===view.users)).sort((a,b)=>a.created_at<b.created_at?1:-1);
+    body = ts.map(t=>{ const s=trackStats(pbt.get(t.id)||[]); const u=userOf(t.created_by); return `<button class="li" data-t="${t.id}"><span class="sw" style="background:${u.color}"></span><span class="m"><b>${esc(t.data.name)}</b>${byTag(t.created_by,t.created_at)}<div class="muted">${fmtLen(s.len)} · ${s.n} nokta${t.data.mode==="manual"?" · elle":""}${recTrack===t.id?" · <b style='color:var(--bad)'>kayıtta</b>":""}${view.stages!=="current"?" · "+esc(R.get(t.stage_id)?.data.name||""):""}</div></span>›</button>`; }).join("") || '<p class="muted">Bu etapta henüz rota yok. “Rota kaydı” ile GPS kaydı başlatabilir ya da elle rota çizebilirsiniz.</p>';
+    body = `<div class="row" style="margin-bottom:10px"><button class="btn s p" id="lManual">✏️ Elle yeni rota çiz</button></div>` + body;
+  } else if(tab==="noktalar"){
+    const q=listQ.toLocaleLowerCase("tr");
+    const fs=recs("feature").filter(f=>scopeStages.includes(f.stage_id) && (view.users==="all"||f.created_by===view.users) && (!q || (f.data.title||"").toLocaleLowerCase("tr").includes(q) || (CAT[f.data.category]?.name||"").toLocaleLowerCase("tr").includes(q))).sort((a,b)=>a.created_at<b.created_at?1:-1);
+    const pc={}; for(const r of R.values()) if(r.kind==="photo"&&!r.deleted) pc[r.data.feature_id]=(pc[r.data.feature_id]||0)+1;
+    const ec={}; for(const r of R.values()) if(r.kind==="entry"&&!r.deleted) ec[r.data.feature_id]=(ec[r.data.feature_id]||0)+1;
+    body = `<input class="in" id="lQ" placeholder="Ara: başlık veya tür" value="${esc(listQ)}" style="margin-bottom:10px">` + (fs.map(f=>{ const c=CAT[f.data.category]||CAT.diger; return `<button class="li" data-f="${f.id}"><span style="font-size:22px">${c.icon}</span><span class="m"><b>${esc(f.data.title)}</b>${byTag(f.created_by,f.created_at)}<div class="muted">${esc(c.name)} · ${ec[f.id]||0} not · ${pc[f.id]||0} foto</div></span>›</button>`; }).join("") || '<p class="muted">Kayıtlı nokta yok.</p>');
+  } else {
+    body = stageListHtml(true);
+  }
+  openSheet("Kayıtlar", `<div class="tabs"><button data-tab="rotalar" class="${tab==="rotalar"?"on":""}">Rotalar</button><button data-tab="noktalar" class="${tab==="noktalar"?"on":""}">Noktalar</button><button data-tab="etaplar" class="${tab==="etaplar"?"on":""}">Etaplar</button></div>
+    <div class="muted" style="margin:-4px 0 10px">${view.stages==="current"?"Yalnızca aktif etap":"Tüm etaplar"} · ${view.users==="all"?"iki kullanıcı":esc(view.users)} <button class="btn s" id="lView" style="padding:2px 8px">değiştir</button></div>${body}`, b=>{
+    b.querySelectorAll("[data-tab]").forEach(x=>x.onclick=()=>{ listTab=x.dataset.tab; openLists(); });
+    b.querySelectorAll("[data-t]").forEach(x=>x.onclick=()=>openTrack(x.dataset.t));
+    b.querySelectorAll("[data-f]").forEach(x=>x.onclick=()=>openFeature(x.dataset.f));
+    const q=$("#lQ"); if(q){ q.oninput=debounce(()=>{ listQ=q.value; openLists(); setTimeout(()=>{const n=$("#lQ"); n.focus(); n.setSelectionRange(n.value.length,n.value.length);},0); },350); }
+    const m=$("#lManual"); if(m) m.onclick=async()=>{ const n=recs("track",STAGE).filter(x=>x.created_by===ME).length+1; const v=await ask({title:"Elle rota çiz", html:'<p class="muted">Rota oluşturulacak; ardından haritaya dokunarak noktaları sırayla ekleyin.</p>', input:{value:`${userOf(ME).short} elle rota ${n}`}, buttons:[["Vazgeç","",false],["Başla","p",true]]}); if(!v) return; const t=newRec("track",{name:v, mode:"manual", started_at:nowISO(), ended_at:nowISO()}); await saveRec(t); startEdit(t.id); };
+    $("#lView").onclick=openViewSheet;
+    bindStageList(b);
+  });
+}
+function stageListHtml(inSheet){
+  const st=recs("stage").sort((a,b)=>(b.data.no||0)-(a.data.no||0));
+  const pbt=pointsByTrack();
+  return st.map(s=>{
+    const tr=recs("track",s.id), fe=recs("feature",s.id); let len=0; tr.forEach(t=>len+=trackStats(pbt.get(t.id)||[]).len);
+    const people=[...new Set([...tr,...fe].map(r=>r.created_by))];
+    return `<button class="${inSheet?"li":"big"}" data-s="${s.id}" ${s.id===STAGE?'style="outline:3px solid var(--pine)"':""}><span class="m" style="flex:1;min-width:0"><b>${esc(s.data.name)}</b><small class="muted" style="display:block">${byTag(s.created_by,s.created_at)}</small><small class="muted" style="display:block">${tr.length} rota · ${fmtLen(len)} · ${fe.length} nokta${people.length?" · "+people.map(p=>userOf(p).short).join(", "):""}</small></span>${s.id===STAGE?'<span class="muted">aktif</span>':"›"}</button>`;
+  }).join("") || '<p class="muted">Henüz etap yok.</p>';
+}
+function bindStageList(root, after){
+  root.querySelectorAll("[data-s]").forEach(x=>x.onclick=()=>{ setStage(x.dataset.s); if(after) after(); else { closeSheet(); toast("Aktif etap: "+R.get(STAGE).data.name); } });
+}
+function setStage(id){ STAGE=id; ls.set("stage",id); render(); fitStage(); }
+function fitStage(){
+  const ids=new Set(recs("track",STAGE).map(t=>t.id)); const ll=[];
+  for(const r of R.values()){ if(r.deleted) continue; if(r.kind==="point"&&ids.has(r.data.track_id)) ll.push([r.data.lat,r.data.lng]); if(r.kind==="feature"&&r.stage_id===STAGE) ll.push([r.data.lat,r.data.lng]); }
+  if(ll.length) map.fitBounds(L.latLngBounds(ll).pad(0.15),{maxZoom:18});
+}
+async function createStage(name){
+  const no=Math.max(0,...recs("stage").map(s=>s.data.no||0))+1;
+  const s=newRec("stage",{name:name||`Etap ${no}`, no, date:new Date().toISOString().slice(0,10)}, null);
+  s.stage_id=s.id; await saveRec(s); return s;
+}
+
+/* ---------------- görünüm filtresi ---------------- */
+function openViewSheet(){
+  openSheet("Haritada göster", `
+    <h3 style="margin-top:0">Etaplar</h3><div class="seg" id="vS"><button data-v="current" class="${view.stages==="current"?"on":""}">Yalnız aktif etap</button><button data-v="all" class="${view.stages==="all"?"on":""}">Tüm etaplar (birikimli)</button></div>
+    <h3>Kullanıcı</h3><div class="seg" id="vU"><button data-v="all" class="${view.users==="all"?"on":""}">İkisi de</button>${CONFIG.USERS.map(u=>`<button data-v="${esc(u.name)}" class="${view.users===u.name?"on":""}"><span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${u.color};margin-right:5px"></span>${esc(u.name)}</button>`).join("")}</div>
+    <h3>Katmanlar</h3><div class="seg" id="vF"><button data-v="1" class="${view.feats?"on":""}">Noktaları göster</button><button data-v="0" class="${!view.feats?"on":""}">Gizle</button></div>
+    <h3>Renkler</h3>${CONFIG.USERS.map(u=>`<div class="by" style="margin-right:14px;font-size:14px"><i style="background:${u.color};width:12px;height:12px"></i>${esc(u.name)}</div>`).join("")}
+    <p class="muted">Düz çizgi: GPS kaydı · Kesikli çizgi: elle çizilmiş rota · Soluk: diğer etaplar.</p>
+    <button class="btn w" id="vFit" style="margin-top:8px">Aktif etabın tamamını göster</button>`, b=>{
+    const bind=(sel,key,conv=x=>x)=>b.querySelectorAll(sel+" button").forEach(x=>x.onclick=()=>{ view[key]=conv(x.dataset.v); ls.set("view",view); render(); openViewSheet(); });
+    bind("#vS","stages"); bind("#vU","users"); bind("#vF","feats",v=>v==="1");
+    $("#vFit").onclick=()=>{ closeSheet(); fitStage(); };
+  });
+}
+
+/* ---------------- menü ---------------- */
+async function openMenu(){
+  const {n,b}=await pendingCount(); const c=cfg();
+  openSheet("Menü", `
+    <div class="card"><div class="row"><span class="av" style="background:${userOf(ME).color}">${esc(userOf(ME).short)}</span><div style="flex:1"><b>${esc(ME)}</b><div class="muted">Girişler bu adla kaydediliyor</div></div><button class="btn s" id="mUser">Değiştir</button></div></div>
+    <div class="card"><b>Senkronizasyon</b><div class="muted" style="margin-top:4px">${sb? (navigator.onLine?"Google Drive’a bağlı":"Çevrimdışı – bağlantı gelince otomatik gönderilir") : "Yerel mod: veriler yalnız bu cihazda. Drive bağlantısını girin."}<br>Bekleyen: ${n} kayıt, ${b} fotoğraf${lastSync?`<br>Son eşitleme: ${new Date(lastSync).toLocaleTimeString("tr-TR")}`:""}${syncErr?`<br><span style="color:var(--bad)">Hata: ${esc(syncErr)}</span>`:""}${sb?`<br>Diğer telefondaki girişler ~20 sn içinde gelir.`:""}</div>
+      <div class="row" style="margin-top:8px">${sb?'<button class="btn s p" id="mSync">Şimdi eşitle</button>':""}<button class="btn s" id="mSrv">Drive bağlantısı</button>${c.url&&c.key?'<button class="btn s" id="mShare">Ortağa kurulum bağlantısı</button>':""}</div></div>
+    <h3>Etap</h3>
+    <div class="row"><button class="btn s" id="mStage">Etap değiştir / yeni etap</button><button class="btn s" id="mRenS">Etabı yeniden adlandır</button></div>
+    <h3>Dışa aktar</h3>
+    <div class="row"><button class="btn s" id="mGeo1">GeoJSON (aktif etap)</button><button class="btn s" id="mGeo2">GeoJSON (tümü)</button><button class="btn s" id="mGpx1">GPX (aktif etap)</button><button class="btn s" id="mGpx2">GPX (tümü)</button><button class="btn s" id="mCsv">Noktalar CSV</button></div>
+    <h3>Çevrimdışı harita</h3>
+    <p class="muted" style="margin-top:0">Sahaya çıkmadan önce, internet varken, görünen alanın uydu görüntüsünü cihaza kaydedin.</p>
+    <button class="btn s" id="mTiles">Görünen alanı indir</button> <span class="muted" id="mTilesTxt"></span>
+    <h3>GPS ayarları</h3>
+    <div class="row"><label class="muted">Min. nokta aralığı (m) <input class="in" id="sMin" type="number" inputmode="decimal" value="${SET.minDist}" style="width:80px;padding:6px"></label><label class="muted">Kabul edilen en kötü doğruluk (m) <input class="in" id="sAcc" type="number" inputmode="decimal" value="${SET.maxAcc}" style="width:80px;padding:6px"></label></div>
+    <p class="muted" style="margin-top:14px">Termessos Saha Defteri · Kayıtlar iki kullanıcı arasında birikimli olarak tutulur; silinenler de “silindi” işaretiyle sunucuda saklanır.</p>
+  `, bd=>{
+    $("#mUser").onclick=()=>{ closeSheet(); startFlow(true); };
+    const s=$("#mSync"); if(s) s.onclick=async()=>{ syncErr=null; await sync(); openMenu(); };
+    $("#mSrv").onclick=()=>{ closeSheet(); serverScreen(true); };
+    const sh=$("#mShare"); if(sh) sh.onclick=shareSetup;
+    $("#mStage").onclick=()=>{ closeSheet(); stageScreen(); };
+    $("#mRenS").onclick=async()=>{ const st=R.get(STAGE); if(!st) return; const v=await ask({title:"Etap adı", input:{value:st.data.name}, buttons:[["Vazgeç","",false],["Kaydet","p",true]]}); if(v){ await saveRec(patch(st,{name:v})); openMenu(); } };
+    const stTr=()=>recs("track").filter(t=>t.stage_id===STAGE), stFe=()=>recs("feature").filter(f=>f.stage_id===STAGE);
+    const stName=slug(R.get(STAGE)?.data.name||"etap");
+    $("#mGeo1").onclick=()=>download(`termessos_${stName}.geojson`, JSON.stringify(geojson(stTr(),stFe()),null,1), "application/geo+json");
+    $("#mGeo2").onclick=()=>download(`termessos_tum_etaplar.geojson`, JSON.stringify(geojson(recs("track"),recs("feature")),null,1), "application/geo+json");
+    $("#mGpx1").onclick=()=>download(`termessos_${stName}.gpx`, gpx(stTr(),stFe()), "application/gpx+xml");
+    $("#mGpx2").onclick=()=>download(`termessos_tum_etaplar.gpx`, gpx(recs("track"),recs("feature")), "application/gpx+xml");
+    $("#mCsv").onclick=()=>download(`termessos_noktalar.csv`, csv(recs("feature")), "text/csv");
+    $("#mTiles").onclick=downloadTiles;
+    $("#sMin").onchange=e=>{ SET.minDist=Math.max(0,+e.target.value||4); ls.set("settings",SET); };
+    $("#sAcc").onchange=e=>{ SET.maxAcc=Math.max(5,+e.target.value||35); ls.set("settings",SET); };
+  });
+}
+async function shareSetup(){
+  const c=cfg(); const link=location.origin+location.pathname+"#kurulum-"+btoa(unescape(encodeURIComponent(JSON.stringify({u:c.url,k:c.key})))).replace(/=+$/,"");
+  await ask({title:"Kurulum bağlantısı", html:`<p class="muted">Bu bağlantıyı ortağınıza gönderin. Açtığında Drive bağlantısı ve ekip şifresi kendiliğinden girilir. <b>İçinde şifre olduğu için bağlantıyı ekip dışına paylaşmayın.</b></p><textarea class="in" readonly id="shLink" style="min-height:90px;font-size:12px">${esc(link)}</textarea>`, buttons:[["Kopyala","p",true]]});
+  try{ await navigator.clipboard.writeText(link); toast("Kopyalandı"); }catch(e){ const t=document.createElement("textarea"); t.value=link; document.body.appendChild(t); t.select(); try{document.execCommand("copy"); toast("Kopyalandı");}catch(_){} t.remove(); }
+}
+
+/* ---------------- dışa aktarma ---------------- */
+const slug=s=>String(s).toLocaleLowerCase("tr").replace(/ı/g,"i").replace(/ğ/g,"g").replace(/ü/g,"u").replace(/ş/g,"s").replace(/ö/g,"o").replace(/ç/g,"c").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"")||"dosya";
+function download(name, text, type){ const b=new Blob([text],{type}); const u=URL.createObjectURL(b); const a=document.createElement("a"); a.href=u; a.download=name; document.body.appendChild(a); a.click(); setTimeout(()=>{URL.revokeObjectURL(u); a.remove();},2000); toast(name+" hazırlandı"); }
+function featExtras(f){
+  const entries=[...R.values()].filter(r=>r.kind==="entry"&&!r.deleted&&r.data.feature_id===f.id).sort((a,b)=>a.created_at<b.created_at?-1:1);
+  const photos=[...R.values()].filter(r=>r.kind==="photo"&&!r.deleted&&r.data.feature_id===f.id);
+  const c=cfg();
+  return {entries, photos, notes:entries.map(e=>`[${e.created_by}, ${fmtDT(e.created_at)}] ${e.data.text}`).join("\n"), urls:photos.map(p=>driveLink(p.data.file_id)||"(henüz yüklenmedi)")};
+}
+function geojson(tracks, feats){
+  const out={type:"FeatureCollection", features:[]};
+  for(const t of tracks){ const pts=trackPoints(t.id); if(pts.length<1) continue; const s=trackStats(pts);
+    out.features.push({type:"Feature", geometry:{type:"LineString", coordinates:pts.map(p=>p.data.alt!=null?[p.data.lng,p.data.lat,p.data.alt]:[p.data.lng,p.data.lat])}, properties:{tur:"rota", id:t.id, ad:t.data.name, etap:R.get(t.stage_id)?.data.name, olusturan:t.created_by, olusturma:t.created_at, son_duzenleyen:t.updated_by, yontem:t.data.mode, uzunluk_m:Math.round(s.len), nokta_sayisi:s.n, baslangic:t.data.started_at, bitis:t.data.ended_at, renk:userOf(t.created_by).color}}); }
+  for(const f of feats){ const x=featExtras(f);
+    out.features.push({type:"Feature", geometry:{type:"Point", coordinates:[f.data.lng,f.data.lat]}, properties:{tur:"nokta", id:f.id, baslik:f.data.title, unsur:CAT[f.data.category]?.name, etap:R.get(f.stage_id)?.data.name, olusturan:f.created_by, olusturma:f.created_at, son_duzenleyen:f.updated_by, dogruluk_m:f.data.acc, rakim_m:f.data.alt, notlar:x.entries.map(e=>({yazan:e.created_by, zaman:e.created_at, metin:e.data.text})), fotograflar:x.photos.map(p=>({yukleyen:p.created_by, zaman:p.created_at, url:x.urls[x.photos.indexOf(p)]}))}}); }
+  return out;
+}
+const xesc=s=>String(s??"").replace(/[<>&"']/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;","'":"&apos;"}[c]));
+function gpx(tracks, feats){
+  let s=`<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Termessos Saha Defteri" xmlns="http://www.topografix.com/GPX/1/1">\n<metadata><name>Termessos</name><time>${nowISO()}</time></metadata>\n`;
+  for(const f of feats){ const x=featExtras(f); s+=`<wpt lat="${f.data.lat}" lon="${f.data.lng}">${f.data.alt!=null?`<ele>${f.data.alt}</ele>`:""}<time>${f.created_at}</time><name>${xesc(f.data.title)}</name><desc>${xesc((CAT[f.data.category]?.name||"")+" | "+f.created_by+(x.notes?"\n"+x.notes:""))}</desc><type>${xesc(CAT[f.data.category]?.name||"")}</type></wpt>\n`; }
+  for(const t of tracks){ const pts=trackPoints(t.id); if(!pts.length) continue; s+=`<trk><name>${xesc(t.data.name)}</name><desc>${xesc(t.created_by+" | "+(R.get(t.stage_id)?.data.name||""))}</desc><trkseg>\n`; for(const p of pts) s+=`<trkpt lat="${p.data.lat}" lon="${p.data.lng}">${p.data.alt!=null?`<ele>${p.data.alt}</ele>`:""}${p.data.t?`<time>${p.data.t}</time>`:""}</trkpt>\n`; s+=`</trkseg></trk>\n`; }
+  return s+"</gpx>\n";
+}
+function csv(feats){
+  const q=v=>`"${String(v??"").replace(/"/g,'""')}"`;
+  const rows=[["etap","baslik","unsur","enlem","boylam","dogruluk_m","rakim_m","olusturan","olusturma","son_duzenleyen","notlar","foto_sayisi","foto_url"]];
+  for(const f of feats){ const x=featExtras(f); rows.push([R.get(f.stage_id)?.data.name, f.data.title, CAT[f.data.category]?.name, f.data.lat, f.data.lng, f.data.acc, f.data.alt, f.created_by, f.created_at, f.updated_by, x.notes, x.photos.length, x.urls.join(" ")]); }
+  return "﻿"+rows.map(r=>r.map(q).join(";")).join("\r\n");
+}
+
+/* ---------------- çevrimdışı karo indirme ---------------- */
+async function downloadTiles(){
+  if(!("caches" in window)){ toast("Bu tarayıcı çevrimdışı haritayı desteklemiyor"); return; }
+  const b=map.getBounds(); const z0=Math.max(13, map.getZoom()-2), z1=18;
+  const lon2x=(lon,z)=>Math.floor((lon+180)/360*2**z), lat2y=(lat,z)=>Math.floor((1-Math.log(Math.tan(lat*Math.PI/180)+1/Math.cos(lat*Math.PI/180))/Math.PI)/2*2**z);
+  const urls=[];
+  for(let z=z0; z<=z1; z++){ const x0=lon2x(b.getWest(),z), x1=lon2x(b.getEast(),z), y0=lat2y(b.getNorth(),z), y1=lat2y(b.getSouth(),z);
+    for(let x=x0;x<=x1;x++) for(let y=y0;y<=y1;y++) urls.push(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`); }
+  if(urls.length>2500){ toast(`Alan çok büyük (${urls.length} karo). Biraz yakınlaştırın.`,4000); return; }
+  if(!await confirmBox("Uydu görüntüsünü indir", `${urls.length} karo (yaklaşık ${Math.round(urls.length*0.025)} MB) indirilecek. Wi-Fi önerilir.`, "İndir", "p")) return;
+  const cache=await caches.open("tsd-tiles-v1"); let done=0, fail=0; const txt=$("#mTilesTxt");
+  const worker=async()=>{ while(urls.length){ const u=urls.pop(); try{ if(!(await cache.match(u))){ const r=await fetch(u,{mode:"cors"}); if(r.ok) await cache.put(u,r); else fail++; } }catch(e){ fail++; } done++; if(txt && done%10===0) txt.textContent=`${done} indirildi…`; } };
+  const total=urls.length; await Promise.all(Array.from({length:6},worker));
+  if(txt) txt.textContent=`${total-fail}/${total} karo kaydedildi`;
+  toast(fail? `${fail} karo indirilemedi` : "Çevrimdışı harita hazır");
+}
+
+/* ---------------- başlangıç ekranları ---------------- */
+function screen(html, mount){ const s=$("#screen"); s.innerHTML=`<div class="wrap"><div class="brand"><img src="icon.svg" alt="" onerror="this.style.display='none'"><div><h1>Termessos Saha Defteri</h1><p>Rota, not ve fotoğraf kaydı</p></div></div>${html}</div>`; s.classList.remove("hidden"); s.scrollTop=0; if(mount) mount(s); }
+function hideScreen(){ $("#screen").classList.add("hidden"); }
+
+function serverScreen(fromMenu){
+  const c=cfg();
+  screen(`<h3 style="margin-top:0">Google Drive bağlantısı</h3>
+    <p class="muted">Kayıtlar Hülya Aybek’in Google Drive’ındaki “Termessos Saha Verileri” tablosunda, fotoğraflar “Termessos Fotoğraflar” klasöründe toplanır. Kurulum kılavuzundaki adımlarla aldığınız bilgileri girin. Ortağınız size bir kurulum bağlantısı gönderdiyse onu açmanız yeterli.</p>
+    <label class="f">Web uygulaması adresi</label><textarea class="in" id="sUrl" style="min-height:70px;font-size:13px" autocapitalize="off" autocorrect="off" placeholder="https://script.google.com/macros/s/…/exec" ${CONFIG.SCRIPT_URL?"readonly":""}>${esc(c.url||"")}</textarea>
+    <label class="f">Ekip şifresi</label><input class="in" id="sKey" value="${esc(c.key||"")}" autocapitalize="off" autocorrect="off" placeholder="Apps Script’te belirlediğiniz şifre">
+    <div style="height:14px"></div>
+    <button class="btn p w" id="sSave">Bağlan ve devam et</button>
+    <div style="height:8px"></div>
+    <button class="btn w" id="sLocal">${fromMenu?"Vazgeç":"Şimdilik yalnız bu cihazda dene"}</button>
+    <p class="muted" id="sMsg"></p>`, ()=>{
+    $("#sSave").onclick=async()=>{
+      const url=$("#sUrl").value.trim(); const key=$("#sKey").value.trim();
+      if(!/^https:\/\/script\.google(usercontent)?\.com\/.+/.test(url)){ $("#sMsg").textContent="Adres https://script.google.com/macros/s/…/exec biçiminde olmalı."; return; }
+      if(!key){ $("#sMsg").textContent="Ekip şifresini girin."; return; }
+      $("#sMsg").textContent="Bağlantı deneniyor…";
+      try{ const j=await gas("ping", {}, url, key); $("#sMsg").textContent="Bağlandı: "+(j.sheet||""); }
+      catch(e){ $("#sMsg").innerHTML=`<span style="color:var(--bad)">Bağlanamadı: ${esc(e.message||e)}</span>`; return; }
+      const old=ls.get("server",{});
+      ls.set("server",{url:CONFIG.SCRIPT_URL?"":url,key}); ls.set("localOnly",false);
+      if(old.url!==url) await IDB.put("meta", 0, "lastSeq");
+      initServer(); await sync(); toast("Google Drive’a bağlandı");
+      if(fromMenu){ hideScreen(); render(); } else userScreen();
+    };
+    $("#sLocal").onclick=()=>{ if(fromMenu){ hideScreen(); return; } ls.set("localOnly",true); userScreen(); };
+  });
+}
+function userScreen(){
+  const last=ls.get("me");
+  screen(`<h3 style="margin-top:0">Kim giriş yapıyor?</h3>
+    ${CONFIG.USERS.map(u=>`<button class="big ${last===u.name?"sel":""}" data-u="${esc(u.name)}"><span class="av" style="background:${u.color}">${esc(u.short)}</span><span>${esc(u.name)}<small>${last===u.name?"Bu cihazda son kullanan":"&nbsp;"}</small></span></button>`).join("")}
+    <p class="muted">Bu cihazdan girilen her rota, nokta, not ve fotoğraf seçtiğiniz adla işaretlenir.</p>`, s=>{
+    s.querySelectorAll("[data-u]").forEach(b=>b.onclick=()=>{ ME=b.dataset.u; ls.set("me",ME); stageScreen(); });
+  });
+}
+async function stageScreen(){
+  screen(`<p class="muted">Kayıtlar eşitleniyor…</p>`);
+  if(sb){ await Promise.race([sync(), new Promise(r=>setTimeout(r,8000))]); }
+  const stages=recs("stage");
+  const nextNo=Math.max(0,...stages.map(s=>s.data.no||0))+1;
+  const today=new Date().toLocaleDateString("tr-TR",{day:"numeric",month:"long",year:"numeric"});
+  screen(`<h3 style="margin-top:0">Merhaba ${esc(ME.split(" ")[0])} 👋</h3>
+    <p style="margin-top:0">Bu gezide yeni bir etap mı başlatacaksınız, yoksa mevcut bir etaba mı devam edeceksiniz?</p>
+    <div class="card"><b>➕ Yeni etap başlat</b>
+      <input class="in" id="nsName" value="Etap ${nextNo} – ${esc(today)}" style="margin-top:8px">
+      <button class="btn p w" id="nsGo" style="margin-top:8px">Yeni etabı başlat</button></div>
+    ${stages.length?`<h3>Mevcut etaba devam et</h3>${stageListHtml(false)}`:'<p class="muted">Henüz kayıtlı etap yok; ilk etabı başlatın.</p>'}
+    <button class="btn w" id="nsBack" style="margin-top:10px">← Kullanıcı seçimine dön</button>`, s=>{
+    $("#nsGo").onclick=async()=>{ const st=await createStage($("#nsName").value.trim()); STAGE=st.id; ls.set("stage",STAGE); enterApp(); toast("Yeni etap başladı: "+st.data.name); };
+    bindStageList(s, ()=>enterApp());
+    $("#nsBack").onclick=userScreen;
+  });
+}
+function startFlow(){ const c=cfg(); if(!(c.url && c.key) && !ls.get("localOnly",false)) serverScreen(false); else userScreen(); }
+function enterApp(){
+  hideScreen(); render(); fitStage(); startWatch(); sync();
+  const t=recTrack && R.get(recTrack);
+  if(t && !t.deleted && !t.data.ended_at && t.created_by===ME){ toast("Önceki rota kaydı sürüyor"); requestWake(); }
+  else if(recTrack){ recTrack=null; ls.set("recTrack",null); }
+  updateRecBanner();
+}
+
+/* ---------------- düğmeler ---------------- */
+$("#recBtn").onclick=async()=>{
+  if(editTrack){ toast("Önce düzenlemeyi bitirin"); return; }
+  if(recTrack){ if(await confirmBox("Kaydı bitir", "Rota kaydı durdurulsun mu? Daha sonra “Kayda devam et” ile sürdürebilirsiniz.", "Bitir", "a")) stopRec(); }
+  else startRec();
+};
+$("#noteBtn").onclick=()=>{ if(editTrack){ toast("Önce düzenlemeyi bitirin"); return; } newFeatureFlow(); };
+$("#listBtn").onclick=openLists;
+$("#menuBtn").onclick=openMenu;
+$("#meChip").onclick=openMenu;
+$("#syncChip").onclick=openMenu;
+$("#stageChip").onclick=()=>{ listTab="etaplar"; openLists(); };
+$("#filterBtn").onclick=openViewSheet;
+$("#followBtn").onclick=()=>{ SET.follow=!SET.follow; ls.set("settings",SET); $("#followBtn").classList.toggle("on",SET.follow); if(SET.follow){ startWatch(); if(lastFix) map.setView([lastFix.lat,lastFix.lng], Math.max(map.getZoom(),17)); else toast("Konum bekleniyor…"); } };
+
+/* ---------------- açılış ---------------- */
+(async function boot(){
+  // kurulum bağlantısı (#kurulum-...)
+  if(location.hash.startsWith("#kurulum-")){
+    try{ const j=JSON.parse(decodeURIComponent(escape(atob(location.hash.slice(9))))); if(j.u&&j.k){ ls.set("server",{url:j.u,key:j.k}); ls.set("localOnly",false); } }catch(e){}
+    history.replaceState(null,"",location.pathname);
+  }
+  if(!window.L){ document.body.innerHTML='<div style="padding:30px;font-family:sans-serif">Harita kütüphanesi yüklenemedi. İnternet bağlantısıyla bir kez açın; sonrasında çevrimdışı da çalışır.</div>'; return; }
+  try{ await IDB.open(); }catch(e){ alert("Yerel depolama açılamadı: "+e.message); }
+  for(const r of await IDB.all("records")) R.set(r.id, r);
+  await preloadLocalBlobs();
+  initMap(); initServer();
+  $("#followBtn").classList.toggle("on", SET.follow);
+  STAGE=ls.get("stage",null); if(STAGE && !R.get(STAGE)) STAGE=null;
+  if("serviceWorker" in navigator && location.protocol==="https:"){ navigator.serviceWorker.register("sw.js").catch(()=>{}); }
+  if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(()=>{}); }
+  startFlow();
+})();
+</script>
+</body>
+</html>
